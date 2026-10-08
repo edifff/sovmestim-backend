@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: sovmestim-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sovmestim}
+    username: ${SPRING_DATASOURCE_USERNAME:sovmestim}
+    password: ${SPRING_DATASOURCE_PASSWORD:sovmestim}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  cache:
+    type: caffeine
+
+# Swagger UI is served at /swagger-ui.html and loads the hand-written contract at /openapi.yaml.
+# The UI is pinned to that file (disable-swagger-default-url) so the contract stays the source of truth.
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /openapi.yaml
+    disable-swagger-default-url: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+sovmestim:
+  jwt:
+    # HS256 secret, at least 32 bytes. Override in production via SOVMESTIM_JWT_SECRET.
+    secret: ${SOVMESTIM_JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+    issuer: ${SOVMESTIM_JWT_ISSUER:sovmestim}
+    access-ttl: PT15M
+    refresh-ttl: P30D
+  otp:
+    ttl: PT10M
+    # Demo/development switch: return the generated code in the response instead of e-mailing it.
+    debug-return-code: ${SOVMESTIM_OTP_DEBUG:true}
+  rls:
+    # demo -> recorded responses (zero paid calls); http -> licensed RLS API.
+    mode: ${SOVMESTIM_RLS_MODE:demo}
+    base-url: ${SOVMESTIM_RLS_BASE_URL:}
+    api-key: ${SOVMESTIM_RLS_API_KEY:}
+    connect-timeout: PT2S
+    read-timeout: PT5S
+  demo:
+    # Load the recorded catalog + interactions on startup when the tables are empty.
+    seed: ${SOVMESTIM_DEMO_SEED:true}
+  rules:
+    class-mapping: classpath:rules/rls_class_mapping.yaml
+    allergy-rules: classpath:rules/allergy_rules.yaml

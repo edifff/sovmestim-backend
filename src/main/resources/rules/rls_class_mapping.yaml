@@ -1,0 +1,45 @@
+# RLS class/subclass/direction -> danger level mapping.
+# Built from real `interact_v2` responses, signed by the expert pharmacologist and versioned in Git.
+# The server never invents a level: anything not covered here falls back to `default_level`.
+version: "1.0.0"
+default_level: INFO
+
+mappings:
+  - class: contra
+    level: FORBIDDEN
+    explanation: "Официальный источник относит сочетание к противопоказанным. Не принимайте препараты вместе."
+
+  - class: pharm
+    subclass: synergism
+    direction: increase_toxicity
+    level: AVOID
+    explanation: "Совместный приём усиливает токсическое действие. Сочетание следует избегать."
+
+  - class: pharm
+    subclass: synergism
+    direction: hyperkalemia
+    level: CAUTION
+    explanation: "Возможно усиление эффекта и повышение риска гиперкалиемии. Требуется контроль."
+
+  - class: pharm
+    subclass: metabolism
+    direction: increase_exposure
+    level: AVOID
+    explanation: "Один препарат повышает концентрацию другого. Возможны серьёзные нежелательные реакции."
+
+  - class: pharm
+    subclass: metabolism
+    direction: decrease_effect
+    level: CAUTION
+    explanation: "Один препарат снижает эффективность другого. Возможно снижение лечебного действия."
+
+  - class: pharm
+    subclass: duplication
+    direction: duplicate_therapy
+    level: CAUTION
+    explanation: "Дублирование терапии одним и тем же действующим веществом или группой."
+
+  # Fallback for any pharmacology pair not covered by a more specific rule.
+  - class: pharm
+    level: CAUTION
+    explanation: "Описано взаимодействие. Уточните у врача или фармацевта."

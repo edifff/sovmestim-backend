@@ -1,0 +1,14 @@
+target/
+!.mvn/wrapper/maven-wrapper.properties
+
+# Local configuration/secrets
+.env
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.log
+
+# OS
+.DS_Store

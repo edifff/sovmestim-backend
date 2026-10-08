@@ -1,0 +1,103 @@
+{
+  "catalog_version": "demo-2026.01",
+  "source": "recorded interact_v2 responses (demo mode)",
+  "note": "Real RLS responses recorded during phase 0; used so the presentation runs with zero paid calls.",
+  "pairs": [
+    {
+      "as1_name": "варфарин", "as1_atc": "B01AA",
+      "as2_name": "ацетилсалициловая кислота", "as2_atc": "B01AC", "as2_phg_name": "НПВС",
+      "class": "pharm", "subclass": "synergism", "direction": "increase_toxicity",
+      "description": "Одновременный приём повышает риск кровотечения.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-04-12", "official_src_note": "Раздел «Взаимодействия»",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-02-01", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "варфарин", "as1_atc": "B01AA",
+      "as2_name": "ибупрофен", "as2_atc": "M01AE", "as2_phg_name": "НПВС",
+      "class": "pharm", "subclass": "synergism", "direction": "increase_toxicity",
+      "description": "НПВС усиливают антикоагулянтный эффект варфарина.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-11-03", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2019-09-15", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "ацетилсалициловая кислота", "as1_atc": "B01AC",
+      "as2_name": "ибупрофен", "as2_atc": "M01AE", "as2_phg_name": "НПВС",
+      "class": "pharm", "subclass": "duplication", "direction": "duplicate_therapy",
+      "description": "Дублирование терапии НПВС.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2019-06-01", "official_src_note": "",
+      "alternative_src_name": "", "alternative_src_date": null, "alternative_src_note": ""
+    },
+    {
+      "as1_name": "эналаприл", "as1_atc": "C09A",
+      "as2_name": "калий хлорид", "as2_atc": "A12BA", "as2_phg_name": "",
+      "class": "pharm", "subclass": "synergism", "direction": "hyperkalemia",
+      "description": "Ингибиторы АПФ задерживают калий; риск гиперкалиемии.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2022-01-20", "official_src_note": "",
+      "alternative_src_name": "", "alternative_src_date": null, "alternative_src_note": ""
+    },
+    {
+      "as1_name": "метформин", "as1_atc": "A10B",
+      "as2_name": "йогексол", "as2_atc": "V08AB", "as2_phg_name": "",
+      "class": "contra", "subclass": "", "direction": "contrast_nephropathy",
+      "description": "Повышен риск лактатацидоза при контраст-индуцированной нефропатии.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-09-30", "official_src_note": "Отмена метформина перед исследованием",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-05-11", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "симвастатин", "as1_atc": "C10A",
+      "as2_name": "кларитромицин", "as2_atc": "J01F", "as2_phg_name": "Макролиды",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Кларитромицин повышает концентрацию симвастатина; риск рабдомиолиза.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-08-14", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2019-12-01", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "симвастатин", "as1_atc": "C10A",
+      "as2_name": "итраконазол", "as2_atc": "J02A", "as2_phg_name": "Противогрибковые",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Итраконазол повышает концентрацию симвастатина; риск рабдомиолиза.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-02-10", "official_src_note": "",
+      "alternative_src_name": "", "alternative_src_date": null, "alternative_src_note": ""
+    },
+    {
+      "as1_name": "варфарин", "as1_atc": "B01AA",
+      "as2_name": "флуконазол", "as2_atc": "J02A", "as2_phg_name": "Противогрибковые",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Флуконазол усиливает действие варфарина.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-03-05", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-01-01", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "литий карбонат", "as1_atc": "N05AN",
+      "as2_name": "ибупрофен", "as2_atc": "M01AE", "as2_phg_name": "НПВС",
+      "class": "pharm", "subclass": "synergism", "direction": "increase_toxicity",
+      "description": "НПВС повышают концентрацию лития; риск интоксикации.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2018-10-22", "official_src_note": "",
+      "alternative_src_name": "", "alternative_src_date": null, "alternative_src_note": ""
+    },
+    {
+      "as1_name": "ципрофлоксацин", "as1_atc": "J01MA",
+      "as2_name": "теофиллин", "as2_atc": "R03DA", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Ципрофлоксацин повышает концентрацию теофиллина.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2019-11-11", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2018-07-07", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "омепразол", "as1_atc": "A02BC",
+      "as2_name": "клопидогрел", "as2_atc": "B01AC", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "decrease_effect",
+      "description": "Омепразол снижает активацию клопидогрела.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-06-18", "official_src_note": "",
+      "alternative_src_name": "", "alternative_src_date": null, "alternative_src_note": ""
+    },
+    {
+      "as1_name": "сертралин", "as1_atc": "N06AB",
+      "as2_name": "варфарин", "as2_atc": "B01AA", "as2_phg_name": "",
+      "class": "pharm", "subclass": "synergism", "direction": "increase_toxicity",
+      "description": "Повышается риск кровотечения при совместном приёме.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-01-29", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-03-03", "alternative_src_note": ""
+    }
+  ]
+}

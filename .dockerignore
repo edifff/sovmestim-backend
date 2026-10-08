@@ -1,0 +1,13 @@
+target/
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
+*.log
+
+# Documentation and the original source script are not needed inside the image.
+README.md
+AGENTS.md
+sovmestim-*.md
+deepseek_sql_*.sql

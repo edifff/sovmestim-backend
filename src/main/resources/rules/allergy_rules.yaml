@@ -1,0 +1,35 @@
+# Own rules for drug-allergy checks (source for this data is undefined on the RLS side).
+# An allergen can match a drug substance by:
+#   * normalized name equality,
+#   * ATC code prefix (allergy.code vs substance ATC),
+#   * membership in a cross-reactivity group.
+version: "1.0.0"
+default_level: CAUTION
+
+severity_levels:
+  "anaphylaxis": FORBIDDEN
+  "анафилаксия": FORBIDDEN
+  "тяжелая": FORBIDDEN
+  "severe": FORBIDDEN
+  "средняя": AVOID
+  "moderate": AVOID
+  "легкая": CAUTION
+  "mild": CAUTION
+
+cross_reactivity:
+  - name: "Пенициллины"
+    code: "J01C"
+    atc_prefixes: ["J01C"]
+    substances: ["бензилпенициллин", "амоксициллин", "ампициллин", "оксациллин"]
+  - name: "НПВС"
+    code: "M01A"
+    atc_prefixes: ["M01A"]
+    substances: ["ацетилсалициловая кислота", "ибупрофен", "диклофенак", "нимесулид", "кетопрофен"]
+  - name: "Сульфаниламиды"
+    code: "J01E"
+    atc_prefixes: ["J01E"]
+    substances: ["сульфаметоксазол", "сульфадиазин", "ко-тримоксазол"]
+  - name: "Макролиды"
+    code: "J01F"
+    atc_prefixes: ["J01F"]
+    substances: ["эритромицин", "кларитромицин", "азитромицин"]

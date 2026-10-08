@@ -1,0 +1,38 @@
+name: sovmestim
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sovmestim
+      POSTGRES_USER: sovmestim
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sovmestim -d sovmestim"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+    image: sovmestim-backend:local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/sovmestim
+      SPRING_DATASOURCE_USERNAME: sovmestim
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+      SOVMESTIM_JWT_SECRET: ${SOVMESTIM_JWT_SECRET:-dev-only-secret-change-me-0123456789abcdef}
+      # Demo mode: recorded RLS responses and a seeded catalog, zero paid calls.
+      SOVMESTIM_RLS_MODE: demo
+      SOVMESTIM_DEMO_SEED: "true"
+      SOVMESTIM_OTP_DEBUG: "true"
+    ports:
+      - "8080:8080"
+
+volumes:
+  db-data:

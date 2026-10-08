@@ -1,0 +1,883 @@
+openapi: 3.0.3
+info:
+  title: Sovmestim API
+  version: 1.0.0
+  description: |
+    Server-side API for the Sovmestim medication assistant.
+
+    The decision logic is server-only; the mobile client holds no rules and no full drug
+    directory. Compatibility checks require network; everything else (reminders, local data)
+    works offline on the device.
+
+    Status values are deliberately explicit: an empty RLS response is reported as
+    `NO_INTERACTIONS_REPORTED`, an unresolved drug as `INSUFFICIENT_DATA`. The value `safe`
+    does not exist anywhere in the contract.
+  contact:
+    name: Sovmestim
+  license:
+    name: Proprietary
+
+servers:
+  - url: /
+    description: Current host
+
+tags:
+  - name: Auth
+    description: "Passwordless login (e-mail code / Telegram bot, SMS later)"
+  - name: Catalog
+    description: "Public drug catalog: normalization, search, resolution"
+  - name: Profile
+    description: "Patient allergies and chronic diseases"
+  - name: Medications
+    description: "Current drug courses"
+  - name: Advice
+    description: "Online compatibility check"
+  - name: Sync
+    description: "Profile push/pull with cursor"
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/auth/request-code:
+    post:
+      tags: [Auth]
+      operationId: requestLoginCode
+      summary: Request a one-time login code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestCodeRequest'
+      responses:
+        '202':
+          description: Code accepted for delivery
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestCodeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/auth/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyLoginCode
+      summary: Exchange a one-time code for tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyCodeRequest'
+      responses:
+        '200':
+          description: Issued access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshTokens
+      summary: Rotate a refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/catalog/substances:
+    get:
+      tags: [Catalog]
+      operationId: searchSubstances
+      summary: Search active substances by name
+      security: []
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 50 }
+      responses:
+        '200':
+          description: Matching substances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubstanceView'
+
+  /v1/catalog/medicines:
+    get:
+      tags: [Catalog]
+      operationId: searchMedicines
+      summary: Search drug products by trade name
+      security: []
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 50 }
+      responses:
+        '200':
+          description: Matching medicines
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MedicineView'
+
+  /v1/catalog/medicines/{id}:
+    get:
+      tags: [Catalog]
+      operationId: getMedicine
+      summary: Fetch one drug product with its substances
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: The medicine
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicineView'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/catalog/resolve:
+    get:
+      tags: [Catalog]
+      operationId: resolveDrugName
+      summary: Resolve an entered drug name to catalog substances
+      description: |
+        Returns an empty `substances` list and `medicineId` null when the name is unknown; the
+        caller must then treat the drug as insufficient data, not as safe.
+      security: []
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Resolution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolvedDrug'
+
+  /v1/profile:
+    get:
+      tags: [Profile]
+      operationId: getProfile
+      summary: Current user profile
+      responses:
+        '200':
+          description: The authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/profile/allergies:
+    get:
+      tags: [Profile]
+      operationId: listAllergies
+      summary: List the patient's allergies
+      responses:
+        '200':
+          description: Active allergies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AllergyView'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Profile]
+      operationId: addAllergy
+      summary: Add an allergy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+      responses:
+        '201':
+          description: Created allergy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllergyView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/profile/allergies/{id}:
+    put:
+      tags: [Profile]
+      operationId: updateAllergy
+      summary: Update an allergy
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+      responses:
+        '200':
+          description: Updated allergy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllergyView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Profile]
+      operationId: deleteAllergy
+      summary: Soft-delete an allergy
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/profile/conditions:
+    get:
+      tags: [Profile]
+      operationId: listConditions
+      summary: List the patient's chronic diseases
+      responses:
+        '200':
+          description: Active conditions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConditionView'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Profile]
+      operationId: addCondition
+      summary: Add a chronic disease
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConditionRequest'
+      responses:
+        '201':
+          description: Created condition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConditionView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/profile/conditions/{id}:
+    delete:
+      tags: [Profile]
+      operationId: deleteCondition
+      summary: Soft-delete a chronic disease
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/medications:
+    get:
+      tags: [Medications]
+      operationId: listMedications
+      summary: List the patient's current drug courses
+      responses:
+        '200':
+          description: Current medications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CourseMedicineView'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Medications]
+      operationId: addMedication
+      summary: Add a current drug course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseMedicineRequest'
+      responses:
+        '201':
+          description: Created course
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseMedicineView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/medications/{id}:
+    delete:
+      tags: [Medications]
+      operationId: deleteMedication
+      summary: Soft-delete a course
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/advice/check:
+    post:
+      tags: [Advice]
+      operationId: checkAdvice
+      summary: Run a compatibility check for one drug
+      description: |
+        One of `medicineId`, `drugName` or `substanceIds` must be provided. An unresolved name
+        yields `INSUFFICIENT_DATA` (HTTP 200), never an error and never "safe".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdviceCheckRequest'
+      responses:
+        '200':
+          description: Check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdviceCheckResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/advice/recheck:
+    post:
+      tags: [Advice]
+      operationId: recheckAdvice
+      summary: Recompute advice for all active medications
+      description: |
+        Re-runs the check for every active course of the user; use after a rules or catalog update.
+        Returns one result per distinct medication.
+      responses:
+        '200':
+          description: Fresh check results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdviceCheckResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/sync/push:
+    post:
+      tags: [Sync]
+      operationId: syncPush
+      summary: Push local profile changes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncPushRequest'
+      responses:
+        '200':
+          description: Per-record result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPushResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/sync/pull:
+    get:
+      tags: [Sync]
+      operationId: syncPull
+      summary: Pull server changes after a cursor
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: ISO-8601 instant returned by a previous pull
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Changes since the cursor (including tombstones)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPullResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Validation error or invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthorized:
+      description: Missing or invalid access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message, timestamp]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details:
+          type: array
+          items: { type: string }
+        timestamp: { type: string, format: date-time }
+
+    RequestCodeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+
+    RequestCodeResponse:
+      type: object
+      required: [email, expiresAt]
+      properties:
+        email: { type: string, format: email }
+        expiresAt: { type: string, format: date-time }
+        devCode:
+          type: string
+          nullable: true
+          description: Populated only when sovmestim.otp.debug-return-code is enabled
+
+    VerifyCodeRequest:
+      type: object
+      required: [email, code]
+      properties:
+        email: { type: string, format: email }
+        code: { type: string }
+
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+
+    TokenResponse:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string, example: Bearer }
+        expiresIn: { type: integer, format: int64, description: Access token lifetime in seconds }
+
+    UserResponse:
+      type: object
+      required: [id, email]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        surname: { type: string, nullable: true }
+        name: { type: string, nullable: true }
+        birthDate: { type: string, format: date, nullable: true }
+
+    SubstanceView:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        atcCode: { type: string, nullable: true }
+        atcName: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+
+    SubstanceRef:
+      type: object
+      required: [name]
+      properties:
+        id: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        atcCode: { type: string, nullable: true }
+        atcName: { type: string, nullable: true }
+        phg: { type: string, nullable: true }
+
+    SubstanceDoseView:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        dosage: { type: string, nullable: true }
+
+    MedicineView:
+      type: object
+      required: [id, name, substances]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        brand: { type: string, nullable: true }
+        formRelease: { type: string, nullable: true }
+        substances:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubstanceDoseView'
+
+    ResolvedDrug:
+      type: object
+      required: [name, substances]
+      properties:
+        medicineId: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        substances:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubstanceRef'
+
+    AllergyRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        severity: { type: string, nullable: true }
+        symptoms: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+
+    AllergyView:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        code: { type: string, nullable: true }
+        severity: { type: string, nullable: true }
+        symptoms: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+        updatedAt: { type: string, format: date-time }
+
+    ConditionRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        mkbCode: { type: string, nullable: true }
+        status: { type: string, nullable: true }
+        diagnosisDate: { type: string, format: date, nullable: true }
+        note: { type: string, nullable: true }
+
+    ConditionView:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        mkbCode: { type: string, nullable: true }
+        status: { type: string, nullable: true }
+        diagnosisDate: { type: string, format: date, nullable: true }
+        note: { type: string, nullable: true }
+        updatedAt: { type: string, format: date-time }
+
+    CourseMedicineRequest:
+      type: object
+      properties:
+        medicineId: { type: string, format: uuid, nullable: true }
+        drugName: { type: string, nullable: true }
+        dosage: { type: string, nullable: true }
+        frequency: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+
+    CourseMedicineView:
+      type: object
+      required: [id, medicineName]
+      properties:
+        id: { type: string, format: uuid }
+        medicineName: { type: string }
+        brand: { type: string, nullable: true }
+        dosage: { type: string, nullable: true }
+        frequency: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        status: { type: string, nullable: true }
+        updatedAt: { type: string, format: date-time }
+
+    AdviceCheckRequest:
+      type: object
+      properties:
+        drugName: { type: string, nullable: true }
+        medicineId: { type: string, format: uuid, nullable: true }
+        substanceIds:
+          type: array
+          nullable: true
+          items: { type: string, format: uuid }
+
+    AdviceCheckResponse:
+      type: object
+      required: [result]
+      properties:
+        adviceId: { type: string, format: uuid }
+        result:
+          $ref: '#/components/schemas/AdviceResult'
+
+    AdviceResult:
+      type: object
+      required: [status, findings, checkedSubstances, checkedAt, notes]
+      properties:
+        status:
+          type: string
+          enum: [INTERACTION_FOUND, NO_INTERACTIONS_REPORTED, INSUFFICIENT_DATA]
+        level:
+          type: string
+          nullable: true
+          enum: [INFO, CAUTION, AVOID, FORBIDDEN]
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdviceFinding'
+        checkedSubstances: { type: integer, format: int32 }
+        rulesVersion: { type: string, nullable: true }
+        mappingVersion: { type: string, nullable: true }
+        catalogVersion: { type: string, nullable: true }
+        checkedAt: { type: string, format: date-time }
+        notes:
+          type: array
+          items: { type: string }
+
+    AdviceFinding:
+      type: object
+      required: [kind, level, title, substances, sources]
+      properties:
+        kind:
+          type: string
+          enum: [DRUG_DRUG, DRUG_ALLERGY, DUPLICATE_SUBSTANCE, DRUG_DISEASE, DRUG_FOOD]
+        level:
+          type: string
+          enum: [INFO, CAUTION, AVOID, FORBIDDEN]
+        title: { type: string }
+        text: { type: string, nullable: true }
+        substances:
+          type: array
+          items: { type: string }
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdviceSourceRef'
+
+    AdviceSourceRef:
+      type: object
+      required: [kind, name]
+      properties:
+        kind: { type: string }
+        name: { type: string }
+        date: { type: string, format: date, nullable: true }
+        note: { type: string, nullable: true }
+
+    AllergyChange:
+      type: object
+      required: [id, deleted]
+      properties:
+        id: { type: string, format: uuid }
+        updatedAt: { type: string, format: date-time, nullable: true }
+        deleted: { type: boolean }
+        name: { type: string, nullable: true }
+        severity: { type: string, nullable: true }
+        symptoms: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+
+    ConditionChange:
+      type: object
+      required: [id, deleted]
+      properties:
+        id: { type: string, format: uuid }
+        updatedAt: { type: string, format: date-time, nullable: true }
+        deleted: { type: boolean }
+        name: { type: string, nullable: true }
+        mkbCode: { type: string, nullable: true }
+        status: { type: string, nullable: true }
+        diagnosisDate: { type: string, format: date, nullable: true }
+        note: { type: string, nullable: true }
+
+    MedicationChange:
+      type: object
+      required: [id, deleted]
+      properties:
+        id: { type: string, format: uuid }
+        updatedAt: { type: string, format: date-time, nullable: true }
+        deleted: { type: boolean }
+        medicineId: { type: string, format: uuid, nullable: true }
+        drugName: { type: string, nullable: true }
+        dosage: { type: string, nullable: true }
+        frequency: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        status: { type: string, nullable: true }
+
+    SyncPushRequest:
+      type: object
+      properties:
+        idempotencyKey: { type: string, nullable: true }
+        allergies:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/AllergyChange'
+        conditions:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/ConditionChange'
+        medications:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/MedicationChange'
+
+    SyncPushResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncRecordResult'
+
+    SyncRecordResult:
+      type: object
+      required: [entityType, status]
+      properties:
+        entityType: { type: string }
+        id: { type: string, format: uuid, nullable: true }
+        status:
+          type: string
+          enum: [APPLIED, CONFLICT, REJECTED]
+        message: { type: string, nullable: true }
+
+    AdviceDelivery:
+      type: object
+      required: [drugName, createdAt, result]
+      properties:
+        adviceId: { type: string, format: uuid }
+        drugName: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        result:
+          $ref: '#/components/schemas/AdviceResult'
+
+    SyncPullResponse:
+      type: object
+      required: [allergies, conditions, medications, advice, nextCursor]
+      properties:
+        allergies:
+          type: array
+          items:
+            $ref: '#/components/schemas/AllergyChange'
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConditionChange'
+        medications:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationChange'
+        advice:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdviceDelivery'
+        nextCursor: { type: string, format: date-time }
