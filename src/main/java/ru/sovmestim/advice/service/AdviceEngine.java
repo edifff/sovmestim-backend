@@ -25,6 +25,7 @@ import ru.sovmestim.advice.model.SubstanceInteraction;
 import ru.sovmestim.advice.model.SubstanceRef;
 import ru.sovmestim.advice.rules.AllergyRuleEvaluator;
 import ru.sovmestim.advice.rules.AllergyRuleSet;
+import ru.sovmestim.advice.rules.ClassMappingResolution;
 import ru.sovmestim.advice.rules.RlsClassMapping;
 import ru.sovmestim.advice.source.InteractionSource;
 import ru.sovmestim.common.util.NameNormalizer;
@@ -146,7 +147,7 @@ public class AdviceEngine {
             level = interaction.explicitLevel();
             explanation = interaction.description();
         } else {
-            RlsClassMapping.Resolution resolution =
+            ClassMappingResolution resolution =
                     classMapping.resolve(interaction.clazz(), interaction.subclass(), interaction.direction());
             level = resolution.level();
             explanation = resolution.explanation() != null && !resolution.explanation().isBlank()

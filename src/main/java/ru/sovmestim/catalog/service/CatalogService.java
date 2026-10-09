@@ -19,6 +19,7 @@ import ru.sovmestim.catalog.domain.ActiveSubstance;
 import ru.sovmestim.catalog.domain.Medicine;
 import ru.sovmestim.catalog.domain.SubstanceInMedicine;
 import ru.sovmestim.catalog.dto.MedicineView;
+import ru.sovmestim.catalog.dto.SubstanceDoseView;
 import ru.sovmestim.catalog.dto.SubstanceView;
 import ru.sovmestim.catalog.repository.ActiveSubstanceRepository;
 import ru.sovmestim.catalog.repository.MedicineRepository;
@@ -154,10 +155,10 @@ public class CatalogService {
         }
         return medicines.stream()
                 .map(medicine -> {
-                    List<MedicineView.SubstanceDoseView> substances = byMedicine
+                    List<SubstanceDoseView> substances = byMedicine
                             .getOrDefault(medicine.getId(), List.of())
                             .stream()
-                            .map(link -> new MedicineView.SubstanceDoseView(
+                            .map(link -> new SubstanceDoseView(
                                     link.getActiveSubstance().getId(),
                                     link.getActiveSubstance().getName(),
                                     link.getDosage()))

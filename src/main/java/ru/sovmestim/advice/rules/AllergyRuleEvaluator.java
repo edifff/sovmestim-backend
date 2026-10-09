@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -91,7 +90,7 @@ public class AllergyRuleEvaluator {
     }
 
     private void indexGroups(Map<String, List<IndexedGroup>> groupsByName, Map<String, List<IndexedGroup>> groupsByCode) {
-        for (AllergyRuleSet.CrossReactivity group : rules.crossReactivity()) {
+        for (CrossReactivity group : rules.crossReactivity()) {
             IndexedGroup entry = new IndexedGroup(group);
             String normalizedName = NameNormalizer.normalize(group.name());
             if (!normalizedName.isEmpty()) {
@@ -151,65 +150,5 @@ public class AllergyRuleEvaluator {
             }
         }
         return candidates;
-    }
-
-    /**
-     * A drug substance with its name and ATC code pre-normalized for repeated comparisons.
-     *
-     * @param ref the original substance reference
-     * @param normalizedName NFKC-lowercased substance name
-     * @param upperAtc upper-cased ATC code, may be {@code null}
-     */
-    private record IndexedSubstance(SubstanceRef ref, String normalizedName, String upperAtc) {
-
-        IndexedSubstance(SubstanceRef ref) {
-            this(ref, NameNormalizer.normalize(ref.name()), ref.atcCode() != null
-                    ? ref.atcCode().toUpperCase(Locale.ROOT)
-                    : null);
-        }
-
-        boolean hasName() {
-            return !normalizedName.isEmpty();
-        }
-    }
-
-    /**
-     * A cross-reactivity group with pre-normalized lookups so that matching never re-normalizes.
-     *
-     * @param group the original rule group
-     * @param substanceNames normalized substance names of the group
-     * @param upperAtcPrefixes upper-cased ATC prefixes of the group
-     */
-    private record IndexedGroup(
-            AllergyRuleSet.CrossReactivity group, Set<String> substanceNames, List<String> upperAtcPrefixes) {
-
-        IndexedGroup(AllergyRuleSet.CrossReactivity group) {
-            this(
-                    group,
-                    group.substances().stream()
-                            .map(NameNormalizer::normalize)
-                            .filter(name -> !name.isEmpty())
-                            .collect(Collectors.toSet()),
-                    group.atcPrefixes().stream().map(prefix -> prefix.toUpperCase(Locale.ROOT)).toList());
-        }
-
-        String name() {
-            return group.name();
-        }
-
-        boolean containsSubstance(IndexedSubstance substance) {
-            if (substance.hasName() && substanceNames.contains(substance.normalizedName())) {
-                return true;
-            }
-            if (substance.upperAtc() == null) {
-                return false;
-            }
-            for (String prefix : upperAtcPrefixes) {
-                if (substance.upperAtc().startsWith(prefix)) {
-                    return true;
-                }
-            }
-            return false;
-        }
     }
 }

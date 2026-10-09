@@ -13,14 +13,4 @@ import java.util.UUID;
  * @param substances the active substances of the medicine with their dosages
  */
 public record MedicineView(
-        UUID id, String name, String brand, String formRelease, List<SubstanceDoseView> substances) {
-
-    /**
-     * Read model for one active substance contained in a medicine.
-     *
-     * @param id the substance identifier
-     * @param name the substance name
-     * @param dosage the dosage of the substance in this medicine
-     */
-    public record SubstanceDoseView(UUID id, String name, String dosage) { }
-}
+        UUID id, String name, String brand, String formRelease, List<SubstanceDoseView> substances) { }

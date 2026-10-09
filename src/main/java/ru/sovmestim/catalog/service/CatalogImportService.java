@@ -226,14 +226,4 @@ public class CatalogImportService {
         JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asText();
     }
-
-    /**
-     * Counts and version produced by one catalog import run.
-     *
-     * @param catalogVersion the version reported by the imported snapshot
-     * @param atc the number of ATC entries processed
-     * @param substances the number of active substances processed
-     * @param medicines the number of medicines created
-     */
-    public record ImportResult(String catalogVersion, int atc, int substances, int medicines) { }
 }

@@ -54,7 +54,7 @@ public class DemoDataSeeder implements ApplicationRunner {
         Resource resource = resourceLoader.getResource(DEMO_CATALOG);
         try (InputStream input = resource.getInputStream()) {
             JsonNode root = objectMapper.readTree(input);
-            CatalogImportService.ImportResult result = catalogImportService.importCatalog(root);
+            ImportResult result = catalogImportService.importCatalog(root);
             LOG.info(
                     "Demo catalog imported ({}): {} ATC, {} substances, {} medicines",
                     result.catalogVersion(),

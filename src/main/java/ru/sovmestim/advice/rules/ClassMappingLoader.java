@@ -35,15 +35,15 @@ public final class ClassMappingLoader {
         AdviceLevel defaultLevel = level(root.get("default_level"), AdviceLevel.INFO);
 
         List<Map<String, Object>> mappings = (List<Map<String, Object>>) root.getOrDefault("mappings", List.of());
-        List<RlsClassMapping.Entry> entries = mappings.stream()
+        List<ClassMappingEntry> entries = mappings.stream()
                 .map(ClassMappingLoader::toEntry)
                 .toList();
         return new RlsClassMapping(version, defaultLevel, entries);
     }
 
-    private static RlsClassMapping.Entry toEntry(Map<String, Object> map) {
+    private static ClassMappingEntry toEntry(Map<String, Object> map) {
         AdviceLevel level = level(map.get("level"), AdviceLevel.INFO);
-        return new RlsClassMapping.Entry(
+        return new ClassMappingEntry(
                 str(map.get("class")),
                 str(map.get("subclass")),
                 str(map.get("direction")),

@@ -40,8 +40,8 @@ public final class AllergyRuleLoader {
 
         List<Map<String, Object>> groups =
                 (List<Map<String, Object>>) root.getOrDefault("cross_reactivity", List.of());
-        List<AllergyRuleSet.CrossReactivity> crossReactivity = groups.stream()
-                .map(group -> new AllergyRuleSet.CrossReactivity(
+        List<CrossReactivity> crossReactivity = groups.stream()
+                .map(group -> new CrossReactivity(
                         ClassMappingLoader.str(group.get("name")),
                         ClassMappingLoader.str(group.get("code")),
                         stringList(group.get("atc_prefixes")),
