@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -91,6 +92,7 @@ public class CatalogService {
      * @param id the medicine identifier
      * @return the medicine view
      */
+    @Cacheable("catalogMedicines")
     public MedicineView getMedicine(UUID id) {
         Medicine medicine = medicineRepository.findDetailedById(id)
                 .orElseThrow(() -> new NotFoundException("Medicine not found: " + id));
@@ -143,6 +145,7 @@ public class CatalogService {
      * @param medicineId the medicine identifier
      * @return substance references of the medicine
      */
+    @Cacheable("catalogMedicineSubstances")
     public List<SubstanceRef> substancesForMedicine(UUID medicineId) {
         return substancesOf(medicineId);
     }

@@ -1,5 +1,6 @@
 package ru.sovmestim.intake.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ public interface CourseMedicineRepository extends JpaRepository<CourseMedicine, 
             select cm from CourseMedicine cm
             join fetch cm.medicine m
             left join fetch m.tradeMark
+            left join fetch cm.status
             where cm.user.id = :userId and cm.deleted = false
             order by cm.updatedAt desc
             """)
@@ -40,8 +42,23 @@ public interface CourseMedicineRepository extends JpaRepository<CourseMedicine, 
             select cm from CourseMedicine cm
             join fetch cm.medicine m
             left join fetch m.tradeMark
+            left join fetch cm.status
             where cm.user.id = :userId and cm.updatedAt > :since
             order by cm.updatedAt asc
             """)
     List<CourseMedicine> findChangedSince(@Param("userId") UUID userId, @Param("since") java.time.Instant since);
+
+    /**
+     * Finds the patient's courses among the given ids, with their medicine loaded.
+     *
+     * @param userId the patient's user id
+     * @param ids the course ids to load
+     * @return the owned courses among the ids
+     */
+    @Query("""
+            select cm from CourseMedicine cm
+            join fetch cm.medicine
+            where cm.user.id = :userId and cm.id in :ids
+            """)
+    List<CourseMedicine> findOwnedByIds(@Param("userId") UUID userId, @Param("ids") Collection<UUID> ids);
 }

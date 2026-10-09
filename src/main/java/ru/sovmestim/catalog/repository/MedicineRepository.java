@@ -25,9 +25,10 @@ public interface MedicineRepository extends JpaRepository<Medicine, UUID> {
      */
     @Query("""
             select distinct m from Medicine m
-            left join m.tradeMark t
+            left join fetch m.tradeMark
+            left join fetch m.formRelease
             where lower(m.name) like lower(concat('%', :q, '%'))
-               or lower(t.nameBrand) like lower(concat('%', :q, '%'))
+               or lower(m.tradeMark.nameBrand) like lower(concat('%', :q, '%'))
             order by m.name
             """)
     List<Medicine> search(@Param("q") String query, Pageable pageable);

@@ -15,11 +15,22 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+          # Batch the many small INSERT/UPDATE statements produced by the catalog import and sync.
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        # Safety net for any association not explicitly fetch-joined: load proxies in batches
+        # instead of one query per entity.
+        default_batch_fetch_size: 50
   flyway:
     enabled: true
     locations: classpath:db/migration
   cache:
     type: caffeine
+    caffeine:
+      # Bounded so a cold cache cannot grow without limit; short TTL keeps imported catalog
+      # changes from being served stale for long (the import also evicts explicitly).
+      spec: maximumSize=10000,expireAfterWrite=30m
 
 # Swagger UI is served at /swagger-ui.html and loads the hand-written contract at /openapi.yaml.
 # The UI is pinned to that file (disable-swagger-default-url) so the contract stays the source of truth.

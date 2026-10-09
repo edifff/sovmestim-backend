@@ -23,7 +23,8 @@ public interface ChronicDiseaseUserRepository extends JpaRepository<ChronicDisea
      */
     @Query("""
             select cu from ChronicDiseaseUser cu
-            join fetch cu.chronicDisease
+            join fetch cu.chronicDisease d
+            left join fetch d.mkb
             left join fetch cu.status
             where cu.user.id = :userId and cu.deleted = false
             order by cu.updatedAt desc

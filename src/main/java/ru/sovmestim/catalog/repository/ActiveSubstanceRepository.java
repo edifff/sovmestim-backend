@@ -33,6 +33,7 @@ public interface ActiveSubstanceRepository extends JpaRepository<ActiveSubstance
      */
     @Query("""
             select s from ActiveSubstance s
+            left join fetch s.atc
             where lower(s.name) like lower(concat('%', :q, '%'))
             order by s.name
             """)
@@ -46,6 +47,7 @@ public interface ActiveSubstanceRepository extends JpaRepository<ActiveSubstance
      */
     @Query("""
             select s from ActiveSubstance s
+            left join fetch s.atc
             where s.id in :ids
             """)
     List<ActiveSubstance> findAllByIdIn(@Param("ids") List<UUID> ids);

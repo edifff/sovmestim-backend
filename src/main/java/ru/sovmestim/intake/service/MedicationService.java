@@ -84,16 +84,20 @@ public class MedicationService {
     /**
      * Finds the catalog medicine of a course owned by the given patient.
      *
-     * @param courseId medication course id
      * @param userId the patient's user id
-     * @return the medicine id, or empty when the course is missing or not owned by the patient
+     * @param courseIds medication course ids to resolve
+     * @return medicine id per owned course, skipping courses that are missing or not owned
      */
     @Transactional(readOnly = true)
-    public java.util.Optional<UUID> medicineIdForCourse(UUID courseId, UUID userId) {
-        return courseMedicineRepository
-                .findById(courseId)
-                .filter(course -> course.getUser().getId().equals(userId))
-                .map(course -> course.getMedicine().getId());
+    public java.util.Map<UUID, UUID> medicineIdsForCourses(UUID userId, java.util.Collection<UUID> courseIds) {
+        if (courseIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<UUID, UUID> byCourse = new java.util.LinkedHashMap<>();
+        for (CourseMedicine course : courseMedicineRepository.findOwnedByIds(userId, courseIds)) {
+            byCourse.put(course.getId(), course.getMedicine().getId());
+        }
+        return byCourse;
     }
 
     /**

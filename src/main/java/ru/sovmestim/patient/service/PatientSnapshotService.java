@@ -90,12 +90,16 @@ public class PatientSnapshotService {
 
     private List<SubstanceRef> currentSubstances(UUID userId, UUID excludeCourseMedicineId) {
         Map<String, SubstanceRef> byName = new LinkedHashMap<>();
+        List<UUID> medicineIdsFromTaken = new java.util.ArrayList<>();
         for (TakenSubstance taken : takenSubstanceRepository.findActiveByUserId(userId)) {
             if (taken.getActiveSubstance() != null) {
                 add(byName, toRef(taken.getActiveSubstance()));
             } else if (taken.getMedicine() != null) {
-                addMedicine(byName, List.of(taken.getMedicine().getId()));
+                medicineIdsFromTaken.add(taken.getMedicine().getId());
             }
+        }
+        if (!medicineIdsFromTaken.isEmpty()) {
+            addMedicine(byName, medicineIdsFromTaken);
         }
         List<CourseMedicine> courses = courseMedicineRepository.findActiveByUserId(userId).stream()
                 .filter(course -> excludeCourseMedicineId == null || !excludeCourseMedicineId.equals(course.getId()))

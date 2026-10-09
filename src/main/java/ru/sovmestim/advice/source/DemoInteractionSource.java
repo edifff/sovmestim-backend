@@ -38,6 +38,7 @@ public class DemoInteractionSource implements InteractionSource {
     private static final Logger LOG = LoggerFactory.getLogger(DemoInteractionSource.class);
 
     private final List<SubstanceInteraction> recorded;
+    private final Map<String, List<Integer>> positionsBySubstance;
     private final String catalogVersion;
 
     /**
@@ -51,6 +52,8 @@ public class DemoInteractionSource implements InteractionSource {
             JsonNode root = objectMapper.readTree(input);
             this.catalogVersion = RlsResponses.catalogVersion(root);
             this.recorded = List.copyOf(RlsResponses.parsePairs(root));
+            // The recording never changes: build the inverted index once instead of on every check.
+            this.positionsBySubstance = indexBySubstance();
             LOG.info("Demo interaction source loaded {} recorded pairs (catalog {})", recorded.size(), catalogVersion);
         } catch (IOException ex) {
             throw new UncheckedIOException("Cannot read recorded RLS responses " + DEFAULT_RESOURCE, ex);
@@ -79,9 +82,8 @@ public class DemoInteractionSource implements InteractionSource {
         if (names.isEmpty()) {
             return List.of();
         }
-        // Inverted index over the recording, built per call: only the pairs mentioning at least one
+        // The index is precomputed in the constructor: only the pairs mentioning at least one
         // queried substance become candidates, the rest of the recording is never touched.
-        Map<String, List<Integer>> positionsBySubstance = indexBySubstance();
         Set<Integer> candidates = new TreeSet<>();
         for (String name : names) {
             List<Integer> positions = positionsBySubstance.get(name);

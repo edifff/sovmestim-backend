@@ -32,14 +32,22 @@ import ru.sovmestim.common.util.NameNormalizer;
 public class AllergyRuleEvaluator {
 
     private final AllergyRuleSet rules;
+    private final Map<String, List<IndexedGroup>> groupsByName;
+    private final Map<String, List<IndexedGroup>> groupsByCode;
 
     /**
      * Creates the evaluator over the configured allergy rules.
+     *
+     * <p>The cross-reactivity groups are indexed once here: the rule set is immutable and loaded at
+     * startup, so rebuilding the index on every evaluation would only repeat the same work.
      *
      * @param rules allergy rule set loaded from configuration
      */
     public AllergyRuleEvaluator(AllergyRuleSet rules) {
         this.rules = rules;
+        this.groupsByName = new HashMap<>();
+        this.groupsByCode = new HashMap<>();
+        indexGroups(groupsByName, groupsByCode);
     }
 
     /**
@@ -54,9 +62,6 @@ public class AllergyRuleEvaluator {
         if (allergies.isEmpty() || substances.isEmpty()) {
             return findings;
         }
-        Map<String, List<IndexedGroup>> groupsByName = new HashMap<>();
-        Map<String, List<IndexedGroup>> groupsByCode = new HashMap<>();
-        indexGroups(groupsByName, groupsByCode);
 
         List<IndexedSubstance> drugSubstances = substances.stream().map(IndexedSubstance::new).toList();
         Set<String> seen = new HashSet<>();

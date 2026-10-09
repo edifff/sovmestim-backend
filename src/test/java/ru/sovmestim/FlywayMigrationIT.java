@@ -51,6 +51,24 @@ class FlywayMigrationIT extends PostgresIntegrationTest {
         }
     }
 
+    @Test
+    void performanceIndexesArePresent() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            for (String index : new String[] {
+                "idx_interaction_sub_pair",
+                "idx_allergy_lower_name",
+                "idx_course_medicine_active",
+                "idx_allergy_user_changed"
+            }) {
+                Assertions.assertThat(count(statement,
+                                "select count(*) from pg_indexes where indexname = '" + index + "'"))
+                        .as("index %s should exist", index)
+                        .isEqualTo(1);
+            }
+        }
+    }
+
     private static int count(Statement statement, String sql) throws Exception {
         try (ResultSet resultSet = statement.executeQuery(sql)) {
             resultSet.next();

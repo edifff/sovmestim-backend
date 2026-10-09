@@ -10,7 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import ru.sovmestim.advice.domain.AdviceRecord;
 import ru.sovmestim.advice.dto.AdviceCheckRequest;
@@ -43,6 +44,7 @@ public class AdviceService {
     private final ObjectMapper objectMapper;
     private final ObjectProvider<DemoInteractionSource> demoInteractionSource;
     private final MedicationService medicationService;
+    private final TransactionTemplate auditTransaction;
 
     /**
      * Creates the service over the catalog, snapshot, engine and audit persistence.
@@ -54,6 +56,9 @@ public class AdviceService {
      * @param objectMapper serializes request and result to JSON
      * @param demoInteractionSource optional demo source providing the catalog version
      * @param medicationService provides active courses for rechecks
+     * @param transactionManager transaction manager used to write the audit row in its own short
+     *                           transaction, so the connection is not held across the interaction
+     *                           source call (which may be a remote HTTP request)
      */
     public AdviceService(
             CatalogService catalogService,
@@ -62,7 +67,8 @@ public class AdviceService {
             AdviceRecordRepository adviceRecordRepository,
             ObjectMapper objectMapper,
             ObjectProvider<DemoInteractionSource> demoInteractionSource,
-            MedicationService medicationService) {
+            MedicationService medicationService,
+            PlatformTransactionManager transactionManager) {
         this.catalogService = catalogService;
         this.patientSnapshotService = patientSnapshotService;
         this.adviceEngine = adviceEngine;
@@ -70,16 +76,20 @@ public class AdviceService {
         this.objectMapper = objectMapper;
         this.demoInteractionSource = demoInteractionSource;
         this.medicationService = medicationService;
+        this.auditTransaction = new TransactionTemplate(transactionManager);
     }
 
     /**
      * Runs the advice check and stores an audit record.
      *
+     * <p>Deliberately not transactional as a whole: the interaction sources may perform a remote
+     * RLS call, and holding a database connection while waiting on the network would tie up the
+     * pool. The audit row is written in its own short transaction.
+     *
      * @param userId id of the requesting user
      * @param request drug identification for the check
      * @return stored advice response
      */
-    @Transactional
     public AdviceCheckResponse check(UUID userId, AdviceCheckRequest request) {
         return check(userId, request, null);
     }
@@ -110,7 +120,7 @@ public class AdviceService {
                 .resultJson(write(result))
                 .createdAt(Instant.now())
                 .build();
-        adviceRecordRepository.save(record);
+        auditTransaction.executeWithoutResult(status -> adviceRecordRepository.save(record));
         return new AdviceCheckResponse(record.getId(), result);
     }
 
@@ -123,12 +133,18 @@ public class AdviceService {
      * @param courseIds active course ids to recheck
      * @return one stored response per rechecked course
      */
-    @Transactional
     public List<AdviceCheckResponse> recheckCourses(UUID userId, Collection<UUID> courseIds) {
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        // Resolve every course to its medicine in one query instead of one query per course.
+        java.util.Map<UUID, UUID> medicineByCourse = medicationService.medicineIdsForCourses(userId, courseIds);
         List<AdviceCheckResponse> responses = new ArrayList<>();
         for (UUID courseId : courseIds) {
-            medicineIdForCourse(userId, courseId).ifPresent(medicineId -> responses.add(
-                    check(userId, new AdviceCheckRequest(null, medicineId, null), courseId)));
+            UUID medicineId = medicineByCourse.get(courseId);
+            if (medicineId != null) {
+                responses.add(check(userId, new AdviceCheckRequest(null, medicineId, null), courseId));
+            }
         }
         return responses;
     }
@@ -139,13 +155,8 @@ public class AdviceService {
      * @param userId id of the requesting user
      * @return one stored response per active course
      */
-    @Transactional
     public List<AdviceCheckResponse> recheckAll(UUID userId) {
         return recheckCourses(userId, medicationService.activeCourseIds(userId));
-    }
-
-    private java.util.Optional<UUID> medicineIdForCourse(UUID userId, UUID courseId) {
-        return medicationService.medicineIdForCourse(courseId, userId);
     }
 
     private ResolvedDrug resolve(AdviceCheckRequest request) {
