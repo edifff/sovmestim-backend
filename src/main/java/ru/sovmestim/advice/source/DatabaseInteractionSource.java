@@ -8,6 +8,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.advice.domain.InteractionSubstances;
 import ru.sovmestim.advice.model.AdviceLevel;
 import ru.sovmestim.advice.model.AdviceSourceRef;
@@ -21,18 +23,10 @@ import ru.sovmestim.catalog.domain.ActiveSubstance;
  * demo source with locally stored facts and own rules.
  */
 @Component
+@RequiredArgsConstructor
 public class DatabaseInteractionSource implements InteractionSource {
 
     private final InteractionSubstancesRepository repository;
-
-    /**
-     * Creates the cache source over the stored interaction rows.
-     *
-     * @param repository repository reading the {@code interaction_substances} table
-     */
-    public DatabaseInteractionSource(InteractionSubstancesRepository repository) {
-        this.repository = repository;
-    }
 
     @Override
     public String name() {

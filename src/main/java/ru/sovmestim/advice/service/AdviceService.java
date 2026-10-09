@@ -10,8 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import lombok.RequiredArgsConstructor;
 
 import ru.sovmestim.advice.domain.AdviceRecord;
 import ru.sovmestim.advice.dto.AdviceCheckRequest;
@@ -33,6 +34,7 @@ import tools.jackson.databind.ObjectMapper;
  * stores an immutable audit row.
  */
 @Service
+@RequiredArgsConstructor
 public class AdviceService {
 
     private static final Logger LOG = LoggerFactory.getLogger(AdviceService.class);
@@ -45,39 +47,6 @@ public class AdviceService {
     private final ObjectProvider<DemoInteractionSource> demoInteractionSource;
     private final MedicationService medicationService;
     private final TransactionTemplate auditTransaction;
-
-    /**
-     * Creates the service over the catalog, snapshot, engine and audit persistence.
-     *
-     * @param catalogService catalog used to resolve the checked drug
-     * @param patientSnapshotService builds the patient snapshot at check time
-     * @param adviceEngine decision engine
-     * @param adviceRecordRepository persists audit rows
-     * @param objectMapper serializes request and result to JSON
-     * @param demoInteractionSource optional demo source providing the catalog version
-     * @param medicationService provides active courses for rechecks
-     * @param transactionManager transaction manager used to write the audit row in its own short
-     *                           transaction, so the connection is not held across the interaction
-     *                           source call (which may be a remote HTTP request)
-     */
-    public AdviceService(
-            CatalogService catalogService,
-            PatientSnapshotService patientSnapshotService,
-            AdviceEngine adviceEngine,
-            AdviceRecordRepository adviceRecordRepository,
-            ObjectMapper objectMapper,
-            ObjectProvider<DemoInteractionSource> demoInteractionSource,
-            MedicationService medicationService,
-            PlatformTransactionManager transactionManager) {
-        this.catalogService = catalogService;
-        this.patientSnapshotService = patientSnapshotService;
-        this.adviceEngine = adviceEngine;
-        this.adviceRecordRepository = adviceRecordRepository;
-        this.objectMapper = objectMapper;
-        this.demoInteractionSource = demoInteractionSource;
-        this.medicationService = medicationService;
-        this.auditTransaction = new TransactionTemplate(transactionManager);
-    }
 
     /**
      * Runs the advice check and stores an audit record.

@@ -9,6 +9,8 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.config.JwtProperties;
 import ru.sovmestim.identity.domain.AppUser;
 
@@ -17,21 +19,11 @@ import ru.sovmestim.identity.domain.AppUser;
  * {@code Authorization: Bearer ...}.
  */
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
     private final JwtEncoder encoder;
     private final JwtProperties properties;
-
-    /**
-     * Creates the service with the encoder and the JWT settings.
-     *
-     * @param encoder Spring's JWT encoder.
-     * @param properties configured issuer and time-to-live settings.
-     */
-    public JwtService(JwtEncoder encoder, JwtProperties properties) {
-        this.encoder = encoder;
-        this.properties = properties;
-    }
 
     /**
      * Issues a short-lived HS256 access token for the user.

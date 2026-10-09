@@ -11,6 +11,8 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.advice.domain.DangerLevel;
 import ru.sovmestim.advice.model.AdviceLevel;
 import ru.sovmestim.advice.repository.DangerLevelRepository;
@@ -24,6 +26,7 @@ import tools.jackson.databind.ObjectMapper;
  * work with zero paid RLS calls; it is a no-op when {@code sovmestim.demo.seed=false}.
  */
 @Component
+@RequiredArgsConstructor
 public class DemoDataSeeder implements ApplicationRunner {
 
     public static final String DEMO_CATALOG = "classpath:demo/catalog.json";
@@ -36,31 +39,6 @@ public class DemoDataSeeder implements ApplicationRunner {
     private final DangerLevelRepository dangerLevelRepository;
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper;
-
-    /**
-     * Creates the seeder.
-     *
-     * @param demoProperties demo mode configuration
-     * @param catalogImportService importer for the catalog snapshot
-     * @param substanceRepository repository used to detect an already populated catalog
-     * @param dangerLevelRepository repository for the danger level dictionary
-     * @param resourceLoader loader for the demo catalog resource
-     * @param objectMapper JSON mapper used to read the demo snapshot
-     */
-    public DemoDataSeeder(
-            DemoProperties demoProperties,
-            CatalogImportService catalogImportService,
-            ActiveSubstanceRepository substanceRepository,
-            DangerLevelRepository dangerLevelRepository,
-            ResourceLoader resourceLoader,
-            ObjectMapper objectMapper) {
-        this.demoProperties = demoProperties;
-        this.catalogImportService = catalogImportService;
-        this.substanceRepository = substanceRepository;
-        this.dangerLevelRepository = dangerLevelRepository;
-        this.resourceLoader = resourceLoader;
-        this.objectMapper = objectMapper;
-    }
 
     @Override
     @Transactional

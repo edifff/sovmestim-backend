@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.RequiredArgsConstructor;
+
 import jakarta.validation.Valid;
 import ru.sovmestim.common.security.CurrentUser;
 import ru.sovmestim.intake.dto.CourseMedicineRequest;
@@ -25,19 +27,11 @@ import ru.sovmestim.intake.service.MedicationService;
  * REST endpoints for managing the patient's medication courses.
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/v1/medications")
 public class MedicationController {
 
     private final MedicationService medicationService;
-
-    /**
-     * Creates the controller around the medication service.
-     *
-     * @param medicationService service managing medication courses
-     */
-    public MedicationController(MedicationService medicationService) {
-        this.medicationService = medicationService;
-    }
 
     /**
      * Lists the authenticated patient's active medication courses.

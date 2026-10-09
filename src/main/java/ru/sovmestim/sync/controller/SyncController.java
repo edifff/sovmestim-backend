@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.common.security.CurrentUser;
 import ru.sovmestim.sync.dto.SyncPullResponse;
 import ru.sovmestim.sync.dto.SyncPushRequest;
@@ -22,19 +24,11 @@ import ru.sovmestim.sync.service.SyncService;
  * REST endpoints for pushing patient changes and pulling server-side changes.
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/v1/sync")
 public class SyncController {
 
     private final SyncService syncService;
-
-    /**
-     * Creates the controller around the sync service.
-     *
-     * @param syncService service performing push and pull
-     */
-    public SyncController(SyncService syncService) {
-        this.syncService = syncService;
-    }
 
     /**
      * Applies a push batch for the authenticated patient.

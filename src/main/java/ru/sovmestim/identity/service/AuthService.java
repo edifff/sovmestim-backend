@@ -15,6 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.common.error.BadRequestException;
 import ru.sovmestim.config.JwtProperties;
 import ru.sovmestim.config.OtpProperties;
@@ -32,6 +34,7 @@ import ru.sovmestim.identity.repository.RefreshTokenRepository;
  * rotating refresh token.
  */
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
     private static final Logger LOG = LoggerFactory.getLogger(AuthService.class);
@@ -46,37 +49,6 @@ public class AuthService {
     private final OtpProperties otpProperties;
     private final JwtProperties jwtProperties;
     private final SecureRandom secureRandom = new SecureRandom();
-
-    /**
-     * Creates the service with its collaborators.
-     *
-     * @param userRepository repository for application users.
-     * @param otpCodeRepository repository for one-time login codes.
-     * @param refreshTokenRepository repository for refresh tokens.
-     * @param passwordEncoder encoder used to hash codes.
-     * @param otpSender channel that delivers codes to users.
-     * @param jwtService issues access tokens.
-     * @param otpProperties OTP tuning parameters.
-     * @param jwtProperties JWT tuning parameters.
-     */
-    public AuthService(
-            AppUserRepository userRepository,
-            OtpCodeRepository otpCodeRepository,
-            RefreshTokenRepository refreshTokenRepository,
-            PasswordEncoder passwordEncoder,
-            OtpSender otpSender,
-            JwtService jwtService,
-            OtpProperties otpProperties,
-            JwtProperties jwtProperties) {
-        this.userRepository = userRepository;
-        this.otpCodeRepository = otpCodeRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.otpSender = otpSender;
-        this.jwtService = jwtService;
-        this.otpProperties = otpProperties;
-        this.jwtProperties = jwtProperties;
-    }
 
     /**
      * Generates a fresh one-time code for the e-mail and sends it to the user.

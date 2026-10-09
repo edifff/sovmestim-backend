@@ -12,6 +12,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.advice.model.SubstanceRef;
 import ru.sovmestim.catalog.domain.ActiveSubstance;
 import ru.sovmestim.catalog.domain.Medicine;
@@ -29,6 +31,7 @@ import ru.sovmestim.common.util.NameNormalizer;
  */
 @Service
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class CatalogService {
 
     private static final int MAX_LIMIT = 50;
@@ -36,22 +39,6 @@ public class CatalogService {
     private final ActiveSubstanceRepository substanceRepository;
     private final MedicineRepository medicineRepository;
     private final SubstanceInMedicineRepository substanceInMedicineRepository;
-
-    /**
-     * Creates the catalog service.
-     *
-     * @param substanceRepository repository for active substances
-     * @param medicineRepository repository for medicines
-     * @param substanceInMedicineRepository repository for medicine-to-substance links
-     */
-    public CatalogService(
-            ActiveSubstanceRepository substanceRepository,
-            MedicineRepository medicineRepository,
-            SubstanceInMedicineRepository substanceInMedicineRepository) {
-        this.substanceRepository = substanceRepository;
-        this.medicineRepository = medicineRepository;
-        this.substanceInMedicineRepository = substanceInMedicineRepository;
-    }
 
     /**
      * Searches active substances by name.

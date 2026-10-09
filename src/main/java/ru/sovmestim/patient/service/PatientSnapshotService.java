@@ -8,6 +8,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.advice.model.PatientAllergy;
 import ru.sovmestim.advice.model.PatientCondition;
 import ru.sovmestim.advice.model.PatientSnapshot;
@@ -31,6 +33,7 @@ import ru.sovmestim.patient.repository.UserDiseaseRepository;
  */
 @Service
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class PatientSnapshotService {
 
     private final AllergyUserRepository allergyUserRepository;
@@ -39,31 +42,6 @@ public class PatientSnapshotService {
     private final TakenSubstanceRepository takenSubstanceRepository;
     private final CourseMedicineRepository courseMedicineRepository;
     private final SubstanceInMedicineRepository substanceInMedicineRepository;
-
-    /**
-     * Creates the service with the repositories needed to assemble a patient snapshot.
-     *
-     * @param allergyUserRepository repository of the patient's allergies
-     * @param chronicDiseaseUserRepository repository of the patient's chronic diseases
-     * @param userDiseaseRepository repository of patient-entered diseases
-     * @param takenSubstanceRepository repository of substances the patient takes
-     * @param courseMedicineRepository repository of the patient's treatment courses
-     * @param substanceInMedicineRepository repository linking medicines to their active substances
-     */
-    public PatientSnapshotService(
-            AllergyUserRepository allergyUserRepository,
-            ChronicDiseaseUserRepository chronicDiseaseUserRepository,
-            UserDiseaseRepository userDiseaseRepository,
-            TakenSubstanceRepository takenSubstanceRepository,
-            CourseMedicineRepository courseMedicineRepository,
-            SubstanceInMedicineRepository substanceInMedicineRepository) {
-        this.allergyUserRepository = allergyUserRepository;
-        this.chronicDiseaseUserRepository = chronicDiseaseUserRepository;
-        this.userDiseaseRepository = userDiseaseRepository;
-        this.takenSubstanceRepository = takenSubstanceRepository;
-        this.courseMedicineRepository = courseMedicineRepository;
-        this.substanceInMedicineRepository = substanceInMedicineRepository;
-    }
 
     /**
      * Builds a snapshot for the patient including all of their current treatment courses.

@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.RequiredArgsConstructor;
+
 import jakarta.validation.Valid;
 import ru.sovmestim.identity.dto.RefreshTokenRequest;
 import ru.sovmestim.identity.dto.RequestCodeRequest;
@@ -19,19 +21,11 @@ import ru.sovmestim.identity.service.AuthService;
  * Passwordless authentication endpoints (e-mail code / Telegram bot, SMS later behind OtpSender).
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/v1/auth")
 public class AuthController {
 
     private final AuthService authService;
-
-    /**
-     * Creates the controller with the authentication service.
-     *
-     * @param authService service implementing the login flows.
-     */
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
 
     /**
      * Starts a login by sending a one-time code to the e-mail.

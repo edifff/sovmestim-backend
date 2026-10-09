@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.RequiredArgsConstructor;
+
 import jakarta.validation.Valid;
 import ru.sovmestim.common.error.NotFoundException;
 import ru.sovmestim.common.security.CurrentUser;
@@ -31,22 +33,12 @@ import ru.sovmestim.patient.service.PatientService;
  * REST endpoints for the authenticated patient's profile: personal data, allergies and conditions.
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/v1/profile")
 public class ProfileController {
 
     private final PatientService patientService;
     private final AppUserRepository userRepository;
-
-    /**
-     * Creates the controller with the patient profile collaborators.
-     *
-     * @param patientService service handling allergies and chronic conditions
-     * @param userRepository repository used to load the current user
-     */
-    public ProfileController(PatientService patientService, AppUserRepository userRepository) {
-        this.patientService = patientService;
-        this.userRepository = userRepository;
-    }
 
     /**
      * Returns the personal data of the authenticated user.

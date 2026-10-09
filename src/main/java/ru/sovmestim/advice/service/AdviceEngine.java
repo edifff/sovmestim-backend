@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.advice.model.AdviceFinding;
 import ru.sovmestim.advice.model.AdviceKind;
 import ru.sovmestim.advice.model.AdviceLevel;
@@ -33,6 +35,7 @@ import ru.sovmestim.common.util.NameNormalizer;
  * It never invents interactions and never uses the status "safe".
  */
 @Service
+@RequiredArgsConstructor
 public class AdviceEngine {
 
     /** Separator used in the canonical pair key of two substances. */
@@ -42,25 +45,6 @@ public class AdviceEngine {
     private final RlsClassMapping classMapping;
     private final AllergyRuleEvaluator allergyEvaluator;
     private final AllergyRuleSet allergyRules;
-
-    /**
-     * Creates the engine over the configured interaction sources and own rules.
-     *
-     * @param sources interaction sources consulted in order
-     * @param classMapping class-to-level mapping table
-     * @param allergyEvaluator own drug-allergy rule
-     * @param allergyRules allergy rule set providing the rules version
-     */
-    public AdviceEngine(
-            List<InteractionSource> sources,
-            RlsClassMapping classMapping,
-            AllergyRuleEvaluator allergyEvaluator,
-            AllergyRuleSet allergyRules) {
-        this.sources = sources;
-        this.classMapping = classMapping;
-        this.allergyEvaluator = allergyEvaluator;
-        this.allergyRules = allergyRules;
-    }
 
     /**
      * Runs the full advice check for the given patient and drug.

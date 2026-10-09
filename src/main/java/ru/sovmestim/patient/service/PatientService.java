@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.common.error.NotFoundException;
 import ru.sovmestim.identity.domain.AppUser;
 import ru.sovmestim.identity.repository.AppUserRepository;
@@ -34,6 +36,7 @@ import ru.sovmestim.patient.repository.StatusRepository;
  * be synced as explicit removals.
  */
 @Service
+@RequiredArgsConstructor
 public class PatientService {
 
     /** Prefix of the not-found message for a patient allergy record. */
@@ -47,37 +50,6 @@ public class PatientService {
     private final ChronicDiseaseUserRepository chronicDiseaseUserRepository;
     private final MkbRepository mkbRepository;
     private final StatusRepository statusRepository;
-
-    /**
-     * Creates the service with the repositories needed to manage the patient profile.
-     *
-     * @param userRepository repository of application users
-     * @param allergyRepository repository of allergy directory entries
-     * @param allergyUserRepository repository of the patient's allergies
-     * @param severityReactionRepository repository of reaction severity entries
-     * @param chronicDiseaseRepository repository of chronic disease directory entries
-     * @param chronicDiseaseUserRepository repository of the patient's chronic diseases
-     * @param mkbRepository repository of ICD-10 codes
-     * @param statusRepository repository of disease status entries
-     */
-    public PatientService(
-            AppUserRepository userRepository,
-            AllergyRepository allergyRepository,
-            AllergyUserRepository allergyUserRepository,
-            SeverityReactionRepository severityReactionRepository,
-            ChronicDiseaseRepository chronicDiseaseRepository,
-            ChronicDiseaseUserRepository chronicDiseaseUserRepository,
-            MkbRepository mkbRepository,
-            StatusRepository statusRepository) {
-        this.userRepository = userRepository;
-        this.allergyRepository = allergyRepository;
-        this.allergyUserRepository = allergyUserRepository;
-        this.severityReactionRepository = severityReactionRepository;
-        this.chronicDiseaseRepository = chronicDiseaseRepository;
-        this.chronicDiseaseUserRepository = chronicDiseaseUserRepository;
-        this.mkbRepository = mkbRepository;
-        this.statusRepository = statusRepository;
-    }
 
     /**
      * Lists the active allergies of the patient.

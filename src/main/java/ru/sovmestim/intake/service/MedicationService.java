@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.catalog.domain.Medicine;
 import ru.sovmestim.catalog.repository.MedicineRepository;
 import ru.sovmestim.catalog.service.CatalogService;
@@ -26,6 +28,7 @@ import ru.sovmestim.intake.repository.CourseMedicineRepository;
  * can later be normalized and checked on sync (status {@code DRAFT_UNVERIFIED} on the client).
  */
 @Service
+@RequiredArgsConstructor
 public class MedicationService {
 
     private static final Logger LOG = LoggerFactory.getLogger(MedicationService.class);
@@ -34,25 +37,6 @@ public class MedicationService {
     private final MedicineRepository medicineRepository;
     private final CourseMedicineRepository courseMedicineRepository;
     private final CatalogService catalogService;
-
-    /**
-     * Creates the service with the repositories it needs to manage medication courses.
-     *
-     * @param userRepository repository for patient accounts
-     * @param medicineRepository repository for catalog medicines
-     * @param courseMedicineRepository repository for medication courses
-     * @param catalogService catalog lookups used to resolve drug names
-     */
-    public MedicationService(
-            AppUserRepository userRepository,
-            MedicineRepository medicineRepository,
-            CourseMedicineRepository courseMedicineRepository,
-            CatalogService catalogService) {
-        this.userRepository = userRepository;
-        this.medicineRepository = medicineRepository;
-        this.courseMedicineRepository = courseMedicineRepository;
-        this.catalogService = catalogService;
-    }
 
     /**
      * Lists the patient's active medication courses.

@@ -11,6 +11,8 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.catalog.domain.ActiveSubstance;
 import ru.sovmestim.catalog.domain.Atc;
 import ru.sovmestim.catalog.domain.FormRelease;
@@ -34,6 +36,7 @@ import tools.jackson.databind.JsonNode;
  * mode it is fed by the recorded snapshot. The operation is idempotent.
  */
 @Service
+@RequiredArgsConstructor
 public class CatalogImportService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CatalogImportService.class);
@@ -57,34 +60,6 @@ public class CatalogImportService {
     private final UnitMeasurementRepository unitMeasurementRepository;
     private final MedicineRepository medicineRepository;
     private final SubstanceInMedicineRepository substanceInMedicineRepository;
-
-    /**
-     * Creates the import service.
-     *
-     * @param atcRepository repository for ATC entries
-     * @param substanceRepository repository for active substances
-     * @param tradeMarkRepository repository for trade marks
-     * @param formReleaseRepository repository for release forms
-     * @param unitMeasurementRepository repository for units of measurement
-     * @param medicineRepository repository for medicines
-     * @param substanceInMedicineRepository repository for medicine-to-substance links
-     */
-    public CatalogImportService(
-            AtcRepository atcRepository,
-            ActiveSubstanceRepository substanceRepository,
-            TradeMarkRepository tradeMarkRepository,
-            FormReleaseRepository formReleaseRepository,
-            UnitMeasurementRepository unitMeasurementRepository,
-            MedicineRepository medicineRepository,
-            SubstanceInMedicineRepository substanceInMedicineRepository) {
-        this.atcRepository = atcRepository;
-        this.substanceRepository = substanceRepository;
-        this.tradeMarkRepository = tradeMarkRepository;
-        this.formReleaseRepository = formReleaseRepository;
-        this.unitMeasurementRepository = unitMeasurementRepository;
-        this.medicineRepository = medicineRepository;
-        this.substanceInMedicineRepository = substanceInMedicineRepository;
-    }
 
     /**
      * Imports one catalog snapshot, creating only entries that are not present yet.

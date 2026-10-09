@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.advice.domain.AdviceRecord;
 import ru.sovmestim.advice.model.AdviceResult;
 import ru.sovmestim.advice.repository.AdviceRecordRepository;
@@ -59,6 +61,7 @@ import tools.jackson.databind.ObjectMapper;
  * Pull returns everything changed after a cursor, including tombstones and the next cursor.
  */
 @Service
+@RequiredArgsConstructor
 public class SyncService {
 
     /** Sync change type of an allergy record. */
@@ -100,61 +103,6 @@ public class SyncService {
     private final AdviceRecordRepository adviceRecordRepository;
     private final SyncRequestRepository syncRequestRepository;
     private final ObjectMapper objectMapper;
-
-    /**
-     * Creates the service with the repositories and collaborators needed to run sync.
-     *
-     * @param userRepository repository for patient accounts
-     * @param allergyRepository repository for allergy dictionary entries
-     * @param allergyUserRepository repository for patient allergies
-     * @param severityReactionRepository repository for reaction severity dictionary entries
-     * @param chronicDiseaseRepository repository for chronic disease dictionary entries
-     * @param chronicDiseaseUserRepository repository for patient conditions
-     * @param mkbRepository repository for MKB code dictionary entries
-     * @param statusRepository repository for status dictionary entries
-     * @param courseMedicineRepository repository for medication courses
-     * @param medicineRepository repository for catalog medicines
-     * @param catalogService catalog lookups used to resolve drug names
-     * @param medicationService access to the patient's active medication courses
-     * @param adviceService runs advice checks after a push
-     * @param adviceRecordRepository repository for produced advice records
-     * @param syncRequestRepository repository for idempotency records
-     * @param objectMapper JSON serializer and deserializer for sync payloads
-     */
-    public SyncService(
-            AppUserRepository userRepository,
-            AllergyRepository allergyRepository,
-            AllergyUserRepository allergyUserRepository,
-            SeverityReactionRepository severityReactionRepository,
-            ChronicDiseaseRepository chronicDiseaseRepository,
-            ChronicDiseaseUserRepository chronicDiseaseUserRepository,
-            MkbRepository mkbRepository,
-            StatusRepository statusRepository,
-            CourseMedicineRepository courseMedicineRepository,
-            MedicineRepository medicineRepository,
-            CatalogService catalogService,
-            MedicationService medicationService,
-            AdviceService adviceService,
-            AdviceRecordRepository adviceRecordRepository,
-            SyncRequestRepository syncRequestRepository,
-            ObjectMapper objectMapper) {
-        this.userRepository = userRepository;
-        this.allergyRepository = allergyRepository;
-        this.allergyUserRepository = allergyUserRepository;
-        this.severityReactionRepository = severityReactionRepository;
-        this.chronicDiseaseRepository = chronicDiseaseRepository;
-        this.chronicDiseaseUserRepository = chronicDiseaseUserRepository;
-        this.mkbRepository = mkbRepository;
-        this.statusRepository = statusRepository;
-        this.courseMedicineRepository = courseMedicineRepository;
-        this.medicineRepository = medicineRepository;
-        this.catalogService = catalogService;
-        this.medicationService = medicationService;
-        this.adviceService = adviceService;
-        this.adviceRecordRepository = adviceRecordRepository;
-        this.syncRequestRepository = syncRequestRepository;
-        this.objectMapper = objectMapper;
-    }
 
     /**
      * Applies a client push batch idempotently and rechecks advice for the affected courses.

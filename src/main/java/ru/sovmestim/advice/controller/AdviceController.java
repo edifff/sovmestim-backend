@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.RequiredArgsConstructor;
+
 import jakarta.validation.Valid;
 import ru.sovmestim.advice.dto.AdviceCheckRequest;
 import ru.sovmestim.advice.dto.AdviceCheckResponse;
@@ -20,19 +22,11 @@ import ru.sovmestim.common.security.CurrentUser;
  * Online compatibility check. Reminders and offline screens never depend on this endpoint.
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/v1/advice")
 public class AdviceController {
 
     private final AdviceService adviceService;
-
-    /**
-     * Creates the controller over the advice service.
-     *
-     * @param adviceService application service running the checks
-     */
-    public AdviceController(AdviceService adviceService) {
-        this.adviceService = adviceService;
-    }
 
     /**
      * Checks one drug against the current patient state.

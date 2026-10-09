@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.RequiredArgsConstructor;
+
 import ru.sovmestim.catalog.dto.MedicineView;
 import ru.sovmestim.catalog.dto.SubstanceView;
 import ru.sovmestim.catalog.service.CatalogService;
@@ -18,19 +20,11 @@ import ru.sovmestim.catalog.service.ResolvedDrug;
  * Public read-only catalog: name autocomplete and drug-to-substance resolution.
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/v1/catalog")
 public class CatalogController {
 
     private final CatalogService catalogService;
-
-    /**
-     * Creates the controller.
-     *
-     * @param catalogService the catalog service used to answer requests
-     */
-    public CatalogController(CatalogService catalogService) {
-        this.catalogService = catalogService;
-    }
 
     /**
      * Searches active substances by name.
