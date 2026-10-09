@@ -111,7 +111,7 @@ public class AuthService {
      * @return the issued access and refresh tokens.
      * @throws BadRequestException if the code is missing, expired, invalid or over attempts.
      */
-    @Transactional
+    @Transactional(noRollbackFor = BadRequestException.class)
     public TokenResponse verifyCode(String rawEmail, String code) {
         String email = normalizeEmail(rawEmail);
         OtpCode otp = otpCodeRepository.findTopByEmailAndConsumedFalseOrderByCreatedAtDesc(email)
