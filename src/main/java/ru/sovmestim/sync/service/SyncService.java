@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,6 +75,14 @@ public class SyncService {
 
     /** Per-record status reported when a change was accepted. */
     private static final String STATUS_APPLIED = "APPLIED";
+
+    /** Per-record status reported when the client change lost to a newer server row. */
+    private static final String STATUS_CONFLICT = "CONFLICT";
+
+    /** Per-record status reported when a change was not applied. */
+    private static final String STATUS_REJECTED = "REJECTED";
+
+    private static final Logger LOG = LoggerFactory.getLogger(SyncService.class);
 
     private final AppUserRepository userRepository;
     private final AllergyRepository allergyRepository;
@@ -158,6 +168,7 @@ public class SyncService {
         String idempotencyKey = blankToNull(request.idempotencyKey());
         SyncPushResponse cached = cachedResponse(userId, idempotencyKey);
         if (cached != null) {
+            LOG.debug("Sync push for user {} replayed from idempotency key {}", userId, idempotencyKey);
             return cached;
         }
 
@@ -193,6 +204,13 @@ public class SyncService {
 
         SyncPushResponse response = new SyncPushResponse(results);
         storeResponse(userId, idempotencyKey, response);
+        LOG.info(
+                "Sync push for user {}: {} record(s), {} conflict(s), {} rejected, advice rechecks={}",
+                userId,
+                results.size(),
+                countByStatus(results, STATUS_CONFLICT),
+                countByStatus(results, STATUS_REJECTED),
+                courseIdsToCheck.size());
         return response;
     }
 
@@ -226,6 +244,13 @@ public class SyncService {
             next = later(next, record.getCreatedAt());
         }
 
+        LOG.debug(
+                "Sync pull for user {}: {} allergy, {} condition, {} medication change(s), {} advice record(s)",
+                userId,
+                allergies.size(),
+                conditions.size(),
+                medications.size(),
+                advice.size());
         return new SyncPullResponse(
                 allergies.stream().map(SyncService::toChange).toList(),
                 conditions.stream().map(SyncService::toChange).toList(),
@@ -465,11 +490,15 @@ public class SyncService {
     }
 
     private static Applied conflict(String type, UUID id) {
-        return new Applied(result(type, id, "CONFLICT", "server row is newer"), false, null);
+        return new Applied(result(type, id, STATUS_CONFLICT, "server row is newer"), false, null);
     }
 
     private static Applied rejected(String type, UUID id, String message) {
-        return new Applied(result(type, id, "REJECTED", message), false, null);
+        return new Applied(result(type, id, STATUS_REJECTED, message), false, null);
+    }
+
+    private static long countByStatus(List<SyncPushResponse.SyncRecordResult> results, String status) {
+        return results.stream().filter(record -> status.equals(record.status())).count();
     }
 
     private static SyncPushResponse.SyncRecordResult result(String type, UUID id, String status, String message) {
@@ -547,6 +576,7 @@ public class SyncService {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (Exception ex) {
+            LOG.warn("Cannot serialize {} for the sync response", value.getClass().getSimpleName(), ex);
             return null;
         }
     }
@@ -558,6 +588,7 @@ public class SyncService {
         try {
             return objectMapper.readValue(json, type);
         } catch (Exception ex) {
+            LOG.warn("Cannot deserialize stored sync payload into {}", type.getSimpleName(), ex);
             return null;
         }
     }

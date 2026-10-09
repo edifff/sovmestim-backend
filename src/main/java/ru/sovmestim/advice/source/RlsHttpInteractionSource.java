@@ -63,10 +63,17 @@ public class RlsHttpInteractionSource implements InteractionSource {
         if (asIds.isBlank()) {
             return List.of();
         }
-        String body = client.get()
-                .uri(uriBuilder -> uriBuilder.path("/api/interact_v2").queryParam("as_ids", asIds).build())
-                .retrieve()
-                .body(String.class);
+        LOG.debug("Requesting RLS interact_v2 for {} substance(s)", substances.size());
+        String body;
+        try {
+            body = client.get()
+                    .uri(uriBuilder -> uriBuilder.path("/api/interact_v2").queryParam("as_ids", asIds).build())
+                    .retrieve()
+                    .body(String.class);
+        } catch (RuntimeException ex) {
+            LOG.warn("RLS interact_v2 request failed", ex);
+            throw ex;
+        }
         if (body == null || body.isBlank()) {
             return List.of();
         }

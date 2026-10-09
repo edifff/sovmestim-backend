@@ -6,6 +6,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,8 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Service
 public class AdviceService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AdviceService.class);
 
     private final CatalogService catalogService;
     private final PatientSnapshotService patientSnapshotService;
@@ -87,6 +91,12 @@ public class AdviceService {
 
         AdviceResult result = adviceEngine.check(
                 snapshot, new DrugRef(drug.medicineId(), drug.name(), drug.substances()), catalogVersion);
+        LOG.info(
+                "Advice check for user {}: status={}, level={}, findings={}",
+                userId,
+                result.status(),
+                result.level(),
+                result.findings().size());
 
         AdviceRecord record = AdviceRecord.builder()
                 .userId(userId)
@@ -169,6 +179,7 @@ public class AdviceService {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (Exception ex) {
+            LOG.warn("Cannot serialize {} for the audit record", value.getClass().getSimpleName(), ex);
             return null;
         }
     }

@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,8 @@ import ru.sovmestim.intake.repository.CourseMedicineRepository;
  */
 @Service
 public class MedicationService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MedicationService.class);
 
     private final AppUserRepository userRepository;
     private final MedicineRepository medicineRepository;
@@ -113,6 +117,7 @@ public class MedicationService {
                 .startDate(request.startDate())
                 .updatedAt(Instant.now())
                 .build());
+        LOG.debug("User {} added medication course {} ({})", userId, saved.getId(), saved.getMedicine().getName());
         return toView(saved);
     }
 
@@ -131,6 +136,7 @@ public class MedicationService {
         entity.setDeleted(true);
         entity.setSynced(false);
         courseMedicineRepository.save(entity);
+        LOG.debug("User {} deleted medication course {}", userId, courseMedicineId);
     }
 
     private Medicine resolveMedicine(CourseMedicineRequest request) {

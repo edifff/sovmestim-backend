@@ -119,14 +119,17 @@ public class AuthService {
         if (otp.getExpiresAt().isBefore(Instant.now())) {
             otp.setConsumed(true);
             otpCodeRepository.save(otp);
+            LOG.warn("Expired login code submitted for {}", email);
             throw new BadRequestException("Login code expired");
         }
         if (otp.getAttempts() >= MAX_OTP_ATTEMPTS) {
+            LOG.warn("Too many login attempts for {}", email);
             throw new BadRequestException("Too many attempts, request a new code");
         }
         if (!passwordEncoder.matches(code, otp.getCodeHash())) {
             otp.setAttempts(otp.getAttempts() + 1);
             otpCodeRepository.save(otp);
+            LOG.warn("Invalid login code for {} (attempt {} of {})", email, otp.getAttempts(), MAX_OTP_ATTEMPTS);
             throw new BadRequestException("Invalid login code");
         }
         otp.setConsumed(true);
@@ -150,6 +153,7 @@ public class AuthService {
         RefreshToken stored = refreshTokenRepository.findByTokenHash(hash)
                 .orElseThrow(() -> new BadRequestException("Unknown refresh token"));
         if (stored.isRevoked() || stored.getExpiresAt().isBefore(Instant.now())) {
+            LOG.warn("Rejected refresh token for user {} (revoked or expired)", stored.getUserId());
             throw new BadRequestException("Refresh token is no longer valid");
         }
         stored.setRevoked(true);
