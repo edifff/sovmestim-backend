@@ -19,10 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 
 import jakarta.validation.Valid;
-import ru.sovmestim.common.error.NotFoundException;
 import ru.sovmestim.common.security.CurrentUser;
 import ru.sovmestim.identity.dto.UserResponse;
-import ru.sovmestim.identity.repository.AppUserRepository;
 import ru.sovmestim.patient.dto.AllergyRequest;
 import ru.sovmestim.patient.dto.AllergyView;
 import ru.sovmestim.patient.dto.ConditionRequest;
@@ -38,7 +36,6 @@ import ru.sovmestim.patient.service.PatientService;
 public class ProfileController {
 
     private final PatientService patientService;
-    private final AppUserRepository userRepository;
 
     /**
      * Returns the personal data of the authenticated user.
@@ -48,12 +45,7 @@ public class ProfileController {
      */
     @GetMapping
     public UserResponse me(@AuthenticationPrincipal Jwt jwt) {
-        UUID userId = CurrentUser.id(jwt);
-        return userRepository
-                .findById(userId)
-                .map(user -> new UserResponse(
-                        user.getId().toString(), user.getEmail(), user.getSurname(), user.getName(), user.getBirthDate()))
-                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
+        return patientService.getProfile(CurrentUser.id(jwt));
     }
 
     /**

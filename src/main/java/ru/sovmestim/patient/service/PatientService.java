@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 
 import ru.sovmestim.common.error.NotFoundException;
 import ru.sovmestim.identity.domain.AppUser;
+import ru.sovmestim.identity.dto.UserResponse;
 import ru.sovmestim.identity.repository.AppUserRepository;
 import ru.sovmestim.patient.domain.Allergy;
 import ru.sovmestim.patient.domain.AllergyUser;
@@ -49,6 +50,19 @@ public class PatientService {
     private final ChronicDiseaseUserRepository chronicDiseaseUserRepository;
     private final MkbRepository mkbRepository;
     private final StatusRepository statusRepository;
+
+    /**
+     * Returns the personal data of the patient.
+     *
+     * @param userId the patient whose profile is loaded
+     * @return the patient's profile data
+     */
+    @Transactional(readOnly = true)
+    public UserResponse getProfile(UUID userId) {
+        AppUser user = requireUser(userId);
+        return new UserResponse(
+                user.getId().toString(), user.getEmail(), user.getSurname(), user.getName(), user.getBirthDate());
+    }
 
     /**
      * Lists the active allergies of the patient.
