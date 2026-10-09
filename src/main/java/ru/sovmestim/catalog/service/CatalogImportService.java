@@ -1,8 +1,12 @@
 package ru.sovmestim.catalog.service;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +34,8 @@ import tools.jackson.databind.JsonNode;
  */
 @Service
 public class CatalogImportService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CatalogImportService.class);
 
     /** Snapshot JSON field holding the ATC block. */
     private static final String FIELD_ATC = "atc";
@@ -87,24 +93,52 @@ public class CatalogImportService {
      */
     @Transactional
     public ImportResult importCatalog(JsonNode root) {
+        // Existing rows are loaded once into maps so the import loops never issue a query per item.
+        Map<String, Atc> existingAtc = atcRepository.findAll().stream()
+                .collect(Collectors.toMap(atc -> atc.getName(), atc -> atc, (first, second) -> first, LinkedHashMap::new));
+        Map<String, ActiveSubstance> existingSubstances = substanceRepository.findAll().stream()
+                .collect(Collectors.toMap(
+                        substance -> substance.getName().toLowerCase(Locale.ROOT),
+                        substance -> substance,
+                        (first, second) -> first,
+                        LinkedHashMap::new));
+        Map<String, TradeMark> existingTradeMarks = tradeMarkRepository.findAll().stream()
+                .collect(Collectors.toMap(
+                        tradeMark -> tradeMark.getNameBrand().toLowerCase(Locale.ROOT),
+                        tradeMark -> tradeMark,
+                        (first, second) -> first,
+                        LinkedHashMap::new));
+        Map<String, FormRelease> existingForms = formReleaseRepository.findAll().stream()
+                .collect(Collectors.toMap(FormRelease::getName, form -> form, (first, second) -> first, LinkedHashMap::new));
+        Map<String, UnitMeasurement> existingUnits = unitMeasurementRepository.findAll().stream()
+                .collect(Collectors.toMap(UnitMeasurement::getName, unit -> unit, (first, second) -> first, LinkedHashMap::new));
+        Map<String, Medicine> existingMedicines = new LinkedHashMap<>();
+
         Map<String, Atc> atcByCode = new LinkedHashMap<>();
-        int atcCount = importAtc(root, atcByCode);
-        importFormReleases(root);
-        importUnitMeasurements(root);
+        int atcCount = importAtc(root, existingAtc, atcByCode);
+        importFormReleases(root, existingForms);
+        importUnitMeasurements(root, existingUnits);
         Map<String, ActiveSubstance> substanceByName = new LinkedHashMap<>();
-        int substanceCount = importSubstances(root, atcByCode, substanceByName);
+        int substanceCount = importSubstances(root, atcByCode, existingSubstances, substanceByName);
         Map<String, TradeMark> tradeMarkByName = new LinkedHashMap<>();
-        importTradeMarks(root, tradeMarkByName);
-        int medicineCount = importMedicines(root, substanceByName, tradeMarkByName);
+        importTradeMarks(root, existingTradeMarks, tradeMarkByName);
+        int medicineCount = importMedicines(root, substanceByName, tradeMarkByName, existingForms, existingUnits,
+                existingMedicines);
         String version = text(root, "catalog_version");
+        LOG.info(
+                "Catalog import finished: version={}, atc={}, substances={}, medicines={}",
+                version,
+                atcCount,
+                substanceCount,
+                medicineCount);
         return new ImportResult(version, atcCount, substanceCount, medicineCount);
     }
 
-    private int importAtc(JsonNode root, Map<String, Atc> atcByCode) {
+    private int importAtc(JsonNode root, Map<String, Atc> existingAtc, Map<String, Atc> atcByCode) {
         int count = 0;
         for (JsonNode node : root.path(FIELD_ATC)) {
             String code = text(node, FIELD_NAME);
-            Atc atc = atcRepository.findByName(code).orElseGet(() -> atcRepository.save(Atc.builder()
+            Atc atc = existingAtc.computeIfAbsent(code, key -> atcRepository.save(Atc.builder()
                     .name(code)
                     .description(text(node, FIELD_DESCRIPTION))
                     .build()));
@@ -114,31 +148,33 @@ public class CatalogImportService {
         return count;
     }
 
-    private void importFormReleases(JsonNode root) {
+    private void importFormReleases(JsonNode root, Map<String, FormRelease> existingForms) {
         for (JsonNode node : root.path("form_releases")) {
             String name = node.asText();
-            formReleaseRepository.findByName(name).orElseGet(() -> formReleaseRepository.save(
+            existingForms.computeIfAbsent(name, key -> formReleaseRepository.save(
                     FormRelease.builder().name(name).build()));
         }
     }
 
-    private void importUnitMeasurements(JsonNode root) {
+    private void importUnitMeasurements(JsonNode root, Map<String, UnitMeasurement> existingUnits) {
         for (JsonNode node : root.path("unit_measurements")) {
             String name = node.asText();
-            unitMeasurementRepository.findByName(name).orElseGet(() -> unitMeasurementRepository.save(
+            existingUnits.computeIfAbsent(name, key -> unitMeasurementRepository.save(
                     UnitMeasurement.builder().name(name).build()));
         }
     }
 
     private int importSubstances(
-            JsonNode root, Map<String, Atc> atcByCode, Map<String, ActiveSubstance> substanceByName) {
+            JsonNode root,
+            Map<String, Atc> atcByCode,
+            Map<String, ActiveSubstance> existingSubstances,
+            Map<String, ActiveSubstance> substanceByName) {
         int count = 0;
         for (JsonNode node : root.path(FIELD_SUBSTANCES)) {
             String name = text(node, FIELD_NAME);
             Atc atc = atcByCode.get(text(node, FIELD_ATC));
-            ActiveSubstance substance = substanceRepository
-                    .findByNameIgnoreCase(name)
-                    .orElseGet(() -> substanceRepository.save(ActiveSubstance.builder()
+            ActiveSubstance substance = existingSubstances.computeIfAbsent(
+                    name.toLowerCase(Locale.ROOT), key -> substanceRepository.save(ActiveSubstance.builder()
                             .name(name)
                             .atc(atc)
                             .description(text(node, FIELD_DESCRIPTION))
@@ -149,11 +185,12 @@ public class CatalogImportService {
         return count;
     }
 
-    private void importTradeMarks(JsonNode root, Map<String, TradeMark> tradeMarkByName) {
+    private void importTradeMarks(
+            JsonNode root, Map<String, TradeMark> existingTradeMarks, Map<String, TradeMark> tradeMarkByName) {
         for (JsonNode node : root.path("trade_marks")) {
             String brand = text(node, "name_brand");
-            TradeMark tradeMark = tradeMarkRepository.findByNameBrandIgnoreCase(brand).orElseGet(() -> tradeMarkRepository.save(
-                    TradeMark.builder()
+            TradeMark tradeMark = existingTradeMarks.computeIfAbsent(
+                    brand.toLowerCase(Locale.ROOT), key -> tradeMarkRepository.save(TradeMark.builder()
                             .nameBrand(brand)
                             .manufacturer(text(node, "manufacturer"))
                             .country(text(node, "country"))
@@ -163,29 +200,33 @@ public class CatalogImportService {
     }
 
     private int importMedicines(
-            JsonNode root, Map<String, ActiveSubstance> substanceByName, Map<String, TradeMark> tradeMarkByName) {
+            JsonNode root,
+            Map<String, ActiveSubstance> substanceByName,
+            Map<String, TradeMark> tradeMarkByName,
+            Map<String, FormRelease> existingForms,
+            Map<String, UnitMeasurement> existingUnits,
+            Map<String, Medicine> existingMedicines) {
         int count = 0;
         for (JsonNode node : root.path("medicines")) {
             String name = text(node, FIELD_NAME);
-            if (medicineExists(name)) {
+            if (medicineExists(name, existingMedicines)) {
                 continue;
             }
             TradeMark tradeMark = tradeMarkByName.get(NameNormalizer.normalize(text(node, "trade_mark")));
-            FormRelease form = formReleaseRepository.findByName(text(node, "form_release")).orElse(null);
+            FormRelease form = existingForms.get(text(node, "form_release"));
             Medicine medicine = medicineRepository.save(Medicine.builder()
                     .name(name)
                     .tradeMark(tradeMark)
                     .formRelease(form)
                     .build());
+            existingMedicines.put(NameNormalizer.normalize(name), medicine);
             for (JsonNode component : node.path(FIELD_SUBSTANCES)) {
                 ActiveSubstance substance =
                         substanceByName.get(NameNormalizer.normalize(text(component, FIELD_NAME)));
                 if (substance == null) {
                     continue;
                 }
-                UnitMeasurement unit = unitMeasurementRepository
-                        .findByName(text(component, "unit"))
-                        .orElse(null);
+                UnitMeasurement unit = existingUnits.get(text(component, "unit"));
                 substanceInMedicineRepository.save(SubstanceInMedicine.builder()
                         .medicine(medicine)
                         .activeSubstance(substance)
@@ -198,10 +239,10 @@ public class CatalogImportService {
         return count;
     }
 
-    private boolean medicineExists(String name) {
+    private boolean medicineExists(String name, Map<String, Medicine> existingMedicines) {
         String normalized = NameNormalizer.normalize(name);
-        return medicineRepository.search(normalized, org.springframework.data.domain.PageRequest.of(0, 10)).stream()
-                .anyMatch(medicine -> NameNormalizer.matches(medicine.getName(), normalized));
+        Medicine medicine = existingMedicines.get(normalized);
+        return medicine != null && NameNormalizer.matches(medicine.getName(), normalized);
     }
 
     private static String text(JsonNode node, String field) {

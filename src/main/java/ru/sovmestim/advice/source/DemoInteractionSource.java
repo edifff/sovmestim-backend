@@ -3,9 +3,13 @@ package ru.sovmestim.advice.source;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -72,9 +76,39 @@ public class DemoInteractionSource implements InteractionSource {
         Set<String> names = substances.stream()
                 .map(substance -> NameNormalizer.normalize(substance.name()))
                 .collect(Collectors.toSet());
-        return recorded.stream()
-                .filter(interaction -> names.contains(NameNormalizer.normalize(interaction.substance1().name()))
-                        && names.contains(NameNormalizer.normalize(interaction.substance2().name())))
-                .toList();
+        if (names.isEmpty()) {
+            return List.of();
+        }
+        // Inverted index over the recording, built per call: only the pairs mentioning at least one
+        // queried substance become candidates, the rest of the recording is never touched.
+        Map<String, List<Integer>> positionsBySubstance = indexBySubstance();
+        Set<Integer> candidates = new TreeSet<>();
+        for (String name : names) {
+            List<Integer> positions = positionsBySubstance.get(name);
+            if (positions != null) {
+                candidates.addAll(positions);
+            }
+        }
+        List<SubstanceInteraction> matches = new ArrayList<>(candidates.size());
+        for (Integer position : candidates) {
+            SubstanceInteraction interaction = recorded.get(position);
+            if (names.contains(NameNormalizer.normalize(interaction.substance1().name()))
+                    && names.contains(NameNormalizer.normalize(interaction.substance2().name()))) {
+                matches.add(interaction);
+            }
+        }
+        return matches;
+    }
+
+    private Map<String, List<Integer>> indexBySubstance() {
+        Map<String, List<Integer>> index = new HashMap<>();
+        for (int position = 0; position < recorded.size(); position++) {
+            SubstanceInteraction interaction = recorded.get(position);
+            index.computeIfAbsent(NameNormalizer.normalize(interaction.substance1().name()), key -> new ArrayList<>())
+                    .add(position);
+            index.computeIfAbsent(NameNormalizer.normalize(interaction.substance2().name()), key -> new ArrayList<>())
+                    .add(position);
+        }
+        return index;
     }
 }

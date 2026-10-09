@@ -94,20 +94,21 @@ public class PatientSnapshotService {
             if (taken.getActiveSubstance() != null) {
                 add(byName, toRef(taken.getActiveSubstance()));
             } else if (taken.getMedicine() != null) {
-                addMedicine(byName, taken.getMedicine().getId());
+                addMedicine(byName, List.of(taken.getMedicine().getId()));
             }
         }
-        for (CourseMedicine course : courseMedicineRepository.findActiveByUserId(userId)) {
-            if (excludeCourseMedicineId != null && excludeCourseMedicineId.equals(course.getId())) {
-                continue;
-            }
-            addMedicine(byName, course.getMedicine().getId());
+        List<CourseMedicine> courses = courseMedicineRepository.findActiveByUserId(userId).stream()
+                .filter(course -> excludeCourseMedicineId == null || !excludeCourseMedicineId.equals(course.getId()))
+                .toList();
+        if (!courses.isEmpty()) {
+            List<UUID> medicineIds = courses.stream().map(course -> course.getMedicine().getId()).toList();
+            addMedicine(byName, medicineIds);
         }
         return List.copyOf(byName.values());
     }
 
-    private void addMedicine(Map<String, SubstanceRef> byName, UUID medicineId) {
-        substanceInMedicineRepository.findByMedicineId(medicineId)
+    private void addMedicine(Map<String, SubstanceRef> byName, List<UUID> medicineIds) {
+        substanceInMedicineRepository.findByMedicineIdIn(medicineIds)
                 .forEach(link -> add(byName, toRef(link.getActiveSubstance())));
     }
 

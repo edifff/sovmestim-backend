@@ -129,11 +129,18 @@ public class AdviceEngine {
     }
 
     private List<AdviceFinding> duplicateFindings(PatientSnapshot patient, DrugRef drug) {
+        // One normalized set of the patient's current substances instead of a nested scan.
+        Set<String> currentNames = patient.currentSubstances().stream()
+                .map(current -> NameNormalizer.normalize(current.name()))
+                .filter(name -> !name.isEmpty())
+                .collect(Collectors.toSet());
         List<AdviceFinding> findings = new ArrayList<>();
+        if (currentNames.isEmpty()) {
+            return findings;
+        }
         for (SubstanceRef substance : drug.substances()) {
-            boolean duplicate = patient.currentSubstances().stream()
-                    .anyMatch(current -> NameNormalizer.matches(current.name(), substance.name()));
-            if (duplicate) {
+            String normalized = NameNormalizer.normalize(substance.name());
+            if (currentNames.contains(normalized)) {
                 findings.add(new AdviceFinding(
                         AdviceKind.DUPLICATE_SUBSTANCE,
                         AdviceLevel.CAUTION,
