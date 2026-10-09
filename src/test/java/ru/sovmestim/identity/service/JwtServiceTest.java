@@ -1,6 +1,7 @@
 package ru.sovmestim.identity.service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -33,7 +34,7 @@ class JwtServiceTest {
     @Test
     void issuesDecodableTokenWithUserIdSubjectAndEmailClaim() {
         JwtService service = new JwtService(new NimbusJwtEncoder(new ImmutableSecret<SecurityContext>(key())),
-                new JwtProperties(SECRET, ISSUER, ACCESS_TTL, Duration.ofDays(1)));
+                new JwtProperties(SECRET, ISSUER, ACCESS_TTL, Duration.ofDays(1)), Clock.systemUTC());
         UUID userId = UUID.randomUUID();
         AppUser user = AppUser.builder().id(userId).email(EMAIL).updatedAt(Instant.now()).build();
 
