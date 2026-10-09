@@ -1,6 +1,6 @@
 package ru.sovmestim.advice.service;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -45,6 +45,7 @@ public class AdviceEngine {
     private final RlsClassMapping classMapping;
     private final AllergyRuleEvaluator allergyEvaluator;
     private final AllergyRuleSet allergyRules;
+    private final Clock clock;
 
     /**
      * Runs the full advice check for the given patient and drug.
@@ -92,7 +93,7 @@ public class AdviceEngine {
                 allergyRules.version(),
                 classMapping.version(),
                 catalogVersion,
-                Instant.now(),
+                clock.instant(),
                 List.copyOf(notes));
     }
 

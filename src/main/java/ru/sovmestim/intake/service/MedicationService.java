@@ -1,6 +1,5 @@
 package ru.sovmestim.intake.service;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -103,7 +102,6 @@ public class MedicationService {
                 .dosage(request.dosage())
                 .frequency(request.frequency())
                 .startDate(request.startDate())
-                .updatedAt(Instant.now())
                 .build());
         LOG.debug("User {} added medication course {} ({})", userId, saved.getId(), saved.getMedicine().getName());
         return toView(saved);

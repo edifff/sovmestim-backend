@@ -1,6 +1,6 @@
 package ru.sovmestim.advice.service;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -47,6 +47,7 @@ public class AdviceService {
     private final ObjectProvider<DemoInteractionSource> demoInteractionSource;
     private final MedicationService medicationService;
     private final TransactionTemplate auditTransaction;
+    private final Clock clock;
 
     /**
      * Runs the advice check and stores an audit record.
@@ -87,7 +88,7 @@ public class AdviceService {
                 .catalogVersion(result.catalogVersion())
                 .requestJson(write(request))
                 .resultJson(write(result))
-                .createdAt(Instant.now())
+                .createdAt(clock.instant())
                 .build();
         auditTransaction.executeWithoutResult(status -> adviceRecordRepository.save(record));
         return new AdviceCheckResponse(record.getId(), result);

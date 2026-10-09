@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -48,6 +49,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final OtpProperties otpProperties;
     private final JwtProperties jwtProperties;
+    private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
     /**
@@ -60,14 +62,14 @@ public class AuthService {
     public RequestCodeResponse requestCode(String rawEmail) {
         String email = normalizeEmail(rawEmail);
         String code = generateCode();
-        Instant expiresAt = Instant.now().plus(otpProperties.ttl());
+        Instant expiresAt = clock.instant().plus(otpProperties.ttl());
         OtpCode otp = OtpCode.builder()
                 .email(email)
                 .codeHash(passwordEncoder.encode(code))
                 .expiresAt(expiresAt)
                 .consumed(false)
                 .attempts(0)
-                .createdAt(Instant.now())
+                .createdAt(clock.instant())
                 .build();
         otpCodeRepository.save(otp);
         otpSender.send(email, code);
@@ -88,7 +90,7 @@ public class AuthService {
         String email = normalizeEmail(rawEmail);
         OtpCode otp = otpCodeRepository.findTopByEmailAndConsumedFalseOrderByCreatedAtDesc(email)
                 .orElseThrow(() -> new BadRequestException("No active login code for this e-mail"));
-        if (otp.getExpiresAt().isBefore(Instant.now())) {
+        if (otp.getExpiresAt().isBefore(clock.instant())) {
             otp.setConsumed(true);
             otpCodeRepository.save(otp);
             LOG.warn("Expired login code submitted for {}", email);
@@ -108,7 +110,7 @@ public class AuthService {
         otpCodeRepository.save(otp);
 
         AppUser user = userRepository.findByEmail(email).orElseGet(() -> userRepository.save(
-                AppUser.builder().email(email).updatedAt(Instant.now()).build()));
+                AppUser.builder().email(email).build()));
         return issueTokens(user);
     }
 
@@ -124,7 +126,7 @@ public class AuthService {
         String hash = sha256(rawRefreshToken);
         RefreshToken stored = refreshTokenRepository.findByTokenHash(hash)
                 .orElseThrow(() -> new BadRequestException("Unknown refresh token"));
-        if (stored.isRevoked() || stored.getExpiresAt().isBefore(Instant.now())) {
+        if (stored.isRevoked() || stored.getExpiresAt().isBefore(clock.instant())) {
             LOG.warn("Rejected refresh token for user {} (revoked or expired)", stored.getUserId());
             throw new BadRequestException("Refresh token is no longer valid");
         }
@@ -141,9 +143,9 @@ public class AuthService {
         refreshTokenRepository.save(RefreshToken.builder()
                 .userId(user.getId())
                 .tokenHash(sha256(rawRefresh))
-                .expiresAt(Instant.now().plus(jwtProperties.refreshTtl()))
+                .expiresAt(clock.instant().plus(jwtProperties.refreshTtl()))
                 .revoked(false)
-                .createdAt(Instant.now())
+                .createdAt(clock.instant())
                 .build());
         LOG.debug("Issued tokens for user {}", user.getId());
         return TokenResponse.of(accessToken, rawRefresh, jwtService.accessTtlSeconds());

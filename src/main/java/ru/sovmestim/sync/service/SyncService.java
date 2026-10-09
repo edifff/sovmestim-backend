@@ -1,5 +1,6 @@
 package ru.sovmestim.sync.service;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -103,6 +104,7 @@ public class SyncService {
     private final AdviceRecordRepository adviceRecordRepository;
     private final SyncRequestRepository syncRequestRepository;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
     /**
      * Applies a client push batch idempotently and rechecks advice for the affected courses.
@@ -243,7 +245,6 @@ public class SyncService {
                 .severityReaction(findOrCreateSeverity(change.severity()))
                 .symptoms(change.symptoms())
                 .reason(change.reason())
-                .updatedAt(Instant.now())
                 .build();
         allergyUserRepository.save(created);
         return appliedProfile(TYPE_ALLERGY, change.id());
@@ -286,7 +287,6 @@ public class SyncService {
                 .status(findOrCreateStatus(change.status()))
                 .diagnosisDate(change.diagnosisDate())
                 .note(change.note())
-                .updatedAt(Instant.now())
                 .build();
         chronicDiseaseUserRepository.save(created);
         return appliedProfile(TYPE_CONDITION, change.id());
@@ -333,7 +333,6 @@ public class SyncService {
                 .frequency(change.frequency())
                 .startDate(change.startDate())
                 .status(findOrCreateStatus(change.status()))
-                .updatedAt(Instant.now())
                 .build();
         courseMedicineRepository.save(created);
         return appliedMedication(change.id());
@@ -417,7 +416,7 @@ public class SyncService {
                     .userId(userId)
                     .idempotencyKey(idempotencyKey)
                     .responseJson(write(response))
-                    .createdAt(Instant.now())
+                    .createdAt(clock.instant())
                     .build());
         }
     }

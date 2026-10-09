@@ -1,6 +1,5 @@
 package ru.sovmestim.patient.service;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -85,7 +84,6 @@ public class PatientService {
                 .severityReaction(severity)
                 .symptoms(request.symptoms())
                 .reason(request.reason())
-                .updatedAt(Instant.now())
                 .build());
         return toView(saved);
     }
@@ -165,7 +163,6 @@ public class PatientService {
                 .status(findOrCreateStatus(request.status()))
                 .diagnosisDate(request.diagnosisDate())
                 .note(request.note())
-                .updatedAt(Instant.now())
                 .build());
         return toView(saved);
     }

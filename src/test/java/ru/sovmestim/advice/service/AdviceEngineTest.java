@@ -1,5 +1,8 @@
 package ru.sovmestim.advice.service;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +38,8 @@ class AdviceEngineTest {
     private static final String WARFARIN = "варфарин";
     private static final String WARFARIN_ATC = "B01AA";
     private static final String AMOXICILLIN = "амоксициллин";
+    private static final String UNKNOWN_DRUG = "неизвестное";
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
 
     private RlsClassMapping mapping;
     private AllergyRuleSet rules;
@@ -96,7 +101,9 @@ class AdviceEngineTest {
     void unresolvedDrugIsInsufficientData() {
         AdviceEngine engine = engine(List.of());
         AdviceResult result = engine.check(
-                PatientSnapshot.empty(UUID.randomUUID()), new DrugRef(null, "неизвестное", List.of()), CATALOG_VERSION);
+                PatientSnapshot.empty(UUID.randomUUID()),
+                new DrugRef(null, UNKNOWN_DRUG, List.of()),
+                CATALOG_VERSION);
 
         Assertions.assertThat(result.status()).isEqualTo(AdviceStatus.INSUFFICIENT_DATA);
     }
@@ -131,6 +138,16 @@ class AdviceEngineTest {
         Assertions.assertThat(result.findings()).extracting(AdviceFinding::kind).contains(AdviceKind.DRUG_ALLERGY);
     }
 
+    @Test
+    void stampsResultWithClockInstant() {
+        AdviceEngine engine = engine(List.of());
+
+        AdviceResult result = engine.check(
+                PatientSnapshot.empty(UUID.randomUUID()), new DrugRef(null, UNKNOWN_DRUG, List.of()), CATALOG_VERSION);
+
+        Assertions.assertThat(result.checkedAt()).isEqualTo(CLOCK.instant());
+    }
+
     private AdviceEngine engine(List<SubstanceInteraction> interactions) {
         InteractionSource source = new InteractionSource() {
             @Override
@@ -143,7 +160,7 @@ class AdviceEngineTest {
                 return interactions;
             }
         };
-        return new AdviceEngine(List.of(source), mapping, evaluator, rules);
+        return new AdviceEngine(List.of(source), mapping, evaluator, rules, CLOCK);
     }
 
     private static SubstanceInteraction interaction(

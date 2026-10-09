@@ -1,5 +1,6 @@
 package ru.sovmestim.identity.service;
 
+import java.time.Clock;
 import java.time.Instant;
 
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -24,6 +25,7 @@ public class JwtService {
 
     private final JwtEncoder encoder;
     private final JwtProperties properties;
+    private final Clock clock;
 
     /**
      * Issues a short-lived HS256 access token for the user.
@@ -32,7 +34,7 @@ public class JwtService {
      * @return the signed JWT as a string.
      */
     public String issueAccessToken(AppUser user) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(properties.issuer())
                 .issuedAt(now)
