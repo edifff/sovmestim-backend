@@ -1,6 +1,7 @@
 package ru.sovmestim.catalog.service;
 
 import java.io.InputStream;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -9,6 +10,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
 import ru.sovmestim.advice.domain.DangerLevel;
 import ru.sovmestim.advice.model.AdviceLevel;
 import ru.sovmestim.advice.repository.DangerLevelRepository;
@@ -24,8 +26,9 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class DemoDataSeeder implements ApplicationRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(DemoDataSeeder.class);
     public static final String DEMO_CATALOG = "classpath:demo/catalog.json";
+
+    private static final Logger LOG = LoggerFactory.getLogger(DemoDataSeeder.class);
 
     private final DemoProperties demoProperties;
     private final CatalogImportService catalogImportService;
@@ -34,6 +37,16 @@ public class DemoDataSeeder implements ApplicationRunner {
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Creates the seeder.
+     *
+     * @param demoProperties demo mode configuration
+     * @param catalogImportService importer for the catalog snapshot
+     * @param substanceRepository repository used to detect an already populated catalog
+     * @param dangerLevelRepository repository for the danger level dictionary
+     * @param resourceLoader loader for the demo catalog resource
+     * @param objectMapper JSON mapper used to read the demo snapshot
+     */
     public DemoDataSeeder(
             DemoProperties demoProperties,
             CatalogImportService catalogImportService,
@@ -57,14 +70,14 @@ public class DemoDataSeeder implements ApplicationRunner {
             return;
         }
         if (substanceRepository.count() > 0) {
-            log.info("Catalog already populated, skipping demo seed");
+            LOG.info("Catalog already populated, skipping demo seed");
             return;
         }
         Resource resource = resourceLoader.getResource(DEMO_CATALOG);
         try (InputStream input = resource.getInputStream()) {
             JsonNode root = objectMapper.readTree(input);
             CatalogImportService.ImportResult result = catalogImportService.importCatalog(root);
-            log.info(
+            LOG.info(
                     "Demo catalog imported ({}): {} ATC, {} substances, {} medicines",
                     result.catalogVersion(),
                     result.atc(),

@@ -8,8 +8,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import ru.sovmestim.advice.domain.AdviceRecord;
 import ru.sovmestim.advice.model.AdviceResult;
 import ru.sovmestim.advice.repository.AdviceRecordRepository;
@@ -57,6 +59,21 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class SyncService {
 
+    /** Sync change type of an allergy record. */
+    private static final String TYPE_ALLERGY = "allergy";
+
+    /** Sync change type of a chronic condition record. */
+    private static final String TYPE_CONDITION = "condition";
+
+    /** Sync change type of a medication record. */
+    private static final String TYPE_MEDICATION = "medication";
+
+    /** Rejection message for a change without an id. */
+    private static final String ERROR_ID_REQUIRED = "id is required";
+
+    /** Per-record status reported when a change was accepted. */
+    private static final String STATUS_APPLIED = "APPLIED";
+
     private final AppUserRepository userRepository;
     private final AllergyRepository allergyRepository;
     private final AllergyUserRepository allergyUserRepository;
@@ -74,6 +91,26 @@ public class SyncService {
     private final SyncRequestRepository syncRequestRepository;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Creates the service with the repositories and collaborators needed to run sync.
+     *
+     * @param userRepository repository for patient accounts
+     * @param allergyRepository repository for allergy dictionary entries
+     * @param allergyUserRepository repository for patient allergies
+     * @param severityReactionRepository repository for reaction severity dictionary entries
+     * @param chronicDiseaseRepository repository for chronic disease dictionary entries
+     * @param chronicDiseaseUserRepository repository for patient conditions
+     * @param mkbRepository repository for MKB code dictionary entries
+     * @param statusRepository repository for status dictionary entries
+     * @param courseMedicineRepository repository for medication courses
+     * @param medicineRepository repository for catalog medicines
+     * @param catalogService catalog lookups used to resolve drug names
+     * @param medicationService access to the patient's active medication courses
+     * @param adviceService runs advice checks after a push
+     * @param adviceRecordRepository repository for produced advice records
+     * @param syncRequestRepository repository for idempotency records
+     * @param objectMapper JSON serializer and deserializer for sync payloads
+     */
     public SyncService(
             AppUserRepository userRepository,
             AllergyRepository allergyRepository,
@@ -109,18 +146,19 @@ public class SyncService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Applies a client push batch idempotently and rechecks advice for the affected courses.
+     *
+     * @param userId the patient's user id
+     * @param request the batch of changes sent by the client
+     * @return per-record results, or the stored response when the idempotency key was already used
+     */
     @Transactional
     public SyncPushResponse push(UUID userId, SyncPushRequest request) {
         String idempotencyKey = blankToNull(request.idempotencyKey());
-        if (idempotencyKey != null) {
-            SyncPushResponse cached = syncRequestRepository
-                    .findByUserIdAndIdempotencyKey(userId, idempotencyKey)
-                    .map(SyncRequest::getResponseJson)
-                    .map(json -> read(json, SyncPushResponse.class))
-                    .orElse(null);
-            if (cached != null) {
-                return cached;
-            }
+        SyncPushResponse cached = cachedResponse(userId, idempotencyKey);
+        if (cached != null) {
+            return cached;
         }
 
         AppUser user = userRepository.findById(userId)
@@ -154,17 +192,17 @@ public class SyncService {
         adviceService.recheckCourses(userId, courseIdsToCheck);
 
         SyncPushResponse response = new SyncPushResponse(results);
-        if (idempotencyKey != null) {
-            syncRequestRepository.save(SyncRequest.builder()
-                    .userId(userId)
-                    .idempotencyKey(idempotencyKey)
-                    .responseJson(write(response))
-                    .createdAt(Instant.now())
-                    .build());
-        }
+        storeResponse(userId, idempotencyKey, response);
         return response;
     }
 
+    /**
+     * Returns everything changed after the cursor, including tombstones and the next cursor.
+     *
+     * @param userId the patient's user id
+     * @param cursor exclusive change cursor, or {@code null} to start from the epoch
+     * @return changed allergies, conditions, medications, advice records and the next cursor
+     */
     @Transactional(readOnly = true)
     public SyncPullResponse pull(UUID userId, Instant cursor) {
         Instant from = cursor != null ? cursor : Instant.EPOCH;
@@ -200,7 +238,7 @@ public class SyncService {
 
     private Applied applyAllergy(AppUser user, SyncPushRequest.AllergyChange change) {
         if (change.id() == null) {
-            return rejected("allergy", null, "id is required");
+            return rejected(TYPE_ALLERGY, null, ERROR_ID_REQUIRED);
         }
         Optional<AllergyUser> existing = allergyUserRepository.findByIdAndUserId(change.id(), user.getId());
         if (existing.isPresent()) {
@@ -209,10 +247,10 @@ public class SyncService {
                 entity.setDeleted(true);
                 entity.setSynced(true);
                 allergyUserRepository.save(entity);
-                return appliedProfile("allergy", entity.getId());
+                return appliedProfile(TYPE_ALLERGY, entity.getId());
             }
             if (isServerNewer(entity.getUpdatedAt(), change.updatedAt())) {
-                return conflict("allergy", entity.getId());
+                return conflict(TYPE_ALLERGY, entity.getId());
             }
             entity.setAllergy(findOrCreateAllergy(change.name()));
             entity.setSeverityReaction(findOrCreateSeverity(change.severity()));
@@ -221,10 +259,10 @@ public class SyncService {
             entity.setDeleted(false);
             entity.setSynced(true);
             allergyUserRepository.save(entity);
-            return appliedProfile("allergy", entity.getId());
+            return appliedProfile(TYPE_ALLERGY, entity.getId());
         }
         if (change.deleted()) {
-            return appliedNoop("allergy", change.id());
+            return appliedNoop(TYPE_ALLERGY, change.id());
         }
         AllergyUser created = AllergyUser.builder()
                 .id(change.id())
@@ -236,14 +274,14 @@ public class SyncService {
                 .updatedAt(Instant.now())
                 .build();
         allergyUserRepository.save(created);
-        return appliedProfile("allergy", change.id());
+        return appliedProfile(TYPE_ALLERGY, change.id());
     }
 
     // ------------------------------------------------------------------ conditions
 
     private Applied applyCondition(AppUser user, SyncPushRequest.ConditionChange change) {
         if (change.id() == null) {
-            return rejected("condition", null, "id is required");
+            return rejected(TYPE_CONDITION, null, ERROR_ID_REQUIRED);
         }
         Optional<ChronicDiseaseUser> existing =
                 chronicDiseaseUserRepository.findByIdAndUserId(change.id(), user.getId());
@@ -253,10 +291,10 @@ public class SyncService {
                 entity.setDeleted(true);
                 entity.setSynced(true);
                 chronicDiseaseUserRepository.save(entity);
-                return appliedProfile("condition", entity.getId());
+                return appliedProfile(TYPE_CONDITION, entity.getId());
             }
             if (isServerNewer(entity.getUpdatedAt(), change.updatedAt())) {
-                return conflict("condition", entity.getId());
+                return conflict(TYPE_CONDITION, entity.getId());
             }
             entity.setChronicDisease(findOrCreateDisease(change.name(), change.mkbCode()));
             entity.setStatus(findOrCreateStatus(change.status()));
@@ -265,10 +303,10 @@ public class SyncService {
             entity.setDeleted(false);
             entity.setSynced(true);
             chronicDiseaseUserRepository.save(entity);
-            return appliedProfile("condition", entity.getId());
+            return appliedProfile(TYPE_CONDITION, entity.getId());
         }
         if (change.deleted()) {
-            return appliedNoop("condition", change.id());
+            return appliedNoop(TYPE_CONDITION, change.id());
         }
         ChronicDiseaseUser created = ChronicDiseaseUser.builder()
                 .id(change.id())
@@ -280,14 +318,14 @@ public class SyncService {
                 .updatedAt(Instant.now())
                 .build();
         chronicDiseaseUserRepository.save(created);
-        return appliedProfile("condition", change.id());
+        return appliedProfile(TYPE_CONDITION, change.id());
     }
 
     // ------------------------------------------------------------------ medications
 
     private Applied applyMedication(AppUser user, SyncPushRequest.MedicationChange change) {
         if (change.id() == null) {
-            return rejected("medication", null, "id is required");
+            return rejected(TYPE_MEDICATION, null, ERROR_ID_REQUIRED);
         }
         Optional<CourseMedicine> existing = courseMedicineRepository.findById(change.id())
                 .filter(course -> course.getUser().getId().equals(user.getId()));
@@ -297,10 +335,10 @@ public class SyncService {
                 entity.setDeleted(true);
                 entity.setSynced(true);
                 courseMedicineRepository.save(entity);
-                return appliedNoop("medication", entity.getId());
+                return appliedNoop(TYPE_MEDICATION, entity.getId());
             }
             if (isServerNewer(entity.getUpdatedAt(), change.updatedAt())) {
-                return conflict("medication", entity.getId());
+                return conflict(TYPE_MEDICATION, entity.getId());
             }
             Medicine medicine = resolveMedicine(change);
             entity.setMedicine(medicine);
@@ -314,7 +352,7 @@ public class SyncService {
             return appliedMedication(entity.getId());
         }
         if (change.deleted()) {
-            return appliedNoop("medication", change.id());
+            return appliedNoop(TYPE_MEDICATION, change.id());
         }
         Medicine medicine = resolveMedicine(change);
         CourseMedicine created = CourseMedicine.builder()
@@ -392,18 +430,38 @@ public class SyncService {
 
     // ------------------------------------------------------------------ helpers
 
-    private record Applied(SyncPushResponse.SyncRecordResult result, boolean profileChanged, UUID courseIdForCheck) {}
+    private SyncPushResponse cachedResponse(UUID userId, String idempotencyKey) {
+        if (idempotencyKey == null) {
+            return null;
+        }
+        return syncRequestRepository
+                .findByUserIdAndIdempotencyKey(userId, idempotencyKey)
+                .map(SyncRequest::getResponseJson)
+                .map(json -> read(json, SyncPushResponse.class))
+                .orElse(null);
+    }
+
+    private void storeResponse(UUID userId, String idempotencyKey, SyncPushResponse response) {
+        if (idempotencyKey != null) {
+            syncRequestRepository.save(SyncRequest.builder()
+                    .userId(userId)
+                    .idempotencyKey(idempotencyKey)
+                    .responseJson(write(response))
+                    .createdAt(Instant.now())
+                    .build());
+        }
+    }
 
     private static Applied appliedProfile(String type, UUID id) {
-        return new Applied(result(type, id, "APPLIED", null), true, null);
+        return new Applied(result(type, id, STATUS_APPLIED, null), true, null);
     }
 
     private static Applied appliedMedication(UUID courseId) {
-        return new Applied(result("medication", courseId, "APPLIED", null), false, courseId);
+        return new Applied(result(TYPE_MEDICATION, courseId, STATUS_APPLIED, null), false, courseId);
     }
 
     private static Applied appliedNoop(String type, UUID id) {
-        return new Applied(result(type, id, "APPLIED", "no-op"), false, null);
+        return new Applied(result(type, id, STATUS_APPLIED, "no-op"), false, null);
     }
 
     private static Applied conflict(String type, UUID id) {
@@ -503,4 +561,13 @@ public class SyncService {
             return null;
         }
     }
+
+    /**
+     * Outcome of applying a single sync change.
+     *
+     * @param result result reported to the client for this record
+     * @param profileChanged whether the change altered the patient profile
+     * @param courseIdForCheck course to recheck with advice, or {@code null}
+     */
+    private record Applied(SyncPushResponse.SyncRecordResult result, boolean profileChanged, UUID courseIdForCheck) { }
 }

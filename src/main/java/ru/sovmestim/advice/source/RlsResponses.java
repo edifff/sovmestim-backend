@@ -4,10 +4,11 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import tools.jackson.databind.JsonNode;
+
 import ru.sovmestim.advice.model.AdviceSourceRef;
 import ru.sovmestim.advice.model.SubstanceInteraction;
 import ru.sovmestim.advice.model.SubstanceRef;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Parses recorded or live {@code interact_v2} responses. The RLS response is a list of pairs with

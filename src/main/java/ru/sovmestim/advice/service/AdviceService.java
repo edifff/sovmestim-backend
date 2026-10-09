@@ -5,9 +5,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import ru.sovmestim.advice.domain.AdviceRecord;
 import ru.sovmestim.advice.dto.AdviceCheckRequest;
 import ru.sovmestim.advice.dto.AdviceCheckResponse;
@@ -38,6 +40,17 @@ public class AdviceService {
     private final ObjectProvider<DemoInteractionSource> demoInteractionSource;
     private final MedicationService medicationService;
 
+    /**
+     * Creates the service over the catalog, snapshot, engine and audit persistence.
+     *
+     * @param catalogService catalog used to resolve the checked drug
+     * @param patientSnapshotService builds the patient snapshot at check time
+     * @param adviceEngine decision engine
+     * @param adviceRecordRepository persists audit rows
+     * @param objectMapper serializes request and result to JSON
+     * @param demoInteractionSource optional demo source providing the catalog version
+     * @param medicationService provides active courses for rechecks
+     */
     public AdviceService(
             CatalogService catalogService,
             PatientSnapshotService patientSnapshotService,
@@ -55,6 +68,13 @@ public class AdviceService {
         this.medicationService = medicationService;
     }
 
+    /**
+     * Runs the advice check and stores an audit record.
+     *
+     * @param userId id of the requesting user
+     * @param request drug identification for the check
+     * @return stored advice response
+     */
     @Transactional
     public AdviceCheckResponse check(UUID userId, AdviceCheckRequest request) {
         return check(userId, request, null);
@@ -88,6 +108,10 @@ public class AdviceService {
      * Recomputes advice for the given active courses and stores fresh records. Each course is
      * excluded from its own snapshot so it is not reported as a duplicate of itself. Called after
      * sync push and when rules/catalog change.
+     *
+     * @param userId id of the requesting user
+     * @param courseIds active course ids to recheck
+     * @return one stored response per rechecked course
      */
     @Transactional
     public List<AdviceCheckResponse> recheckCourses(UUID userId, Collection<UUID> courseIds) {
@@ -101,6 +125,9 @@ public class AdviceService {
 
     /**
      * Recomputes advice for every active course of the user (rules/catalog change trigger).
+     *
+     * @param userId id of the requesting user
+     * @return one stored response per active course
      */
     @Transactional
     public List<AdviceCheckResponse> recheckAll(UUID userId) {

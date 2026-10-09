@@ -3,8 +3,10 @@ package ru.sovmestim.patient.service;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import ru.sovmestim.common.error.NotFoundException;
 import ru.sovmestim.identity.domain.AppUser;
 import ru.sovmestim.identity.repository.AppUserRepository;
@@ -34,6 +36,9 @@ import ru.sovmestim.patient.repository.StatusRepository;
 @Service
 public class PatientService {
 
+    /** Prefix of the not-found message for a patient allergy record. */
+    private static final String ERROR_ALLERGY_NOT_FOUND = "Allergy not found: ";
+
     private final AppUserRepository userRepository;
     private final AllergyRepository allergyRepository;
     private final AllergyUserRepository allergyUserRepository;
@@ -43,6 +48,18 @@ public class PatientService {
     private final MkbRepository mkbRepository;
     private final StatusRepository statusRepository;
 
+    /**
+     * Creates the service with the repositories needed to manage the patient profile.
+     *
+     * @param userRepository repository of application users
+     * @param allergyRepository repository of allergy directory entries
+     * @param allergyUserRepository repository of the patient's allergies
+     * @param severityReactionRepository repository of reaction severity entries
+     * @param chronicDiseaseRepository repository of chronic disease directory entries
+     * @param chronicDiseaseUserRepository repository of the patient's chronic diseases
+     * @param mkbRepository repository of ICD-10 codes
+     * @param statusRepository repository of disease status entries
+     */
     public PatientService(
             AppUserRepository userRepository,
             AllergyRepository allergyRepository,
@@ -62,6 +79,12 @@ public class PatientService {
         this.statusRepository = statusRepository;
     }
 
+    /**
+     * Lists the active allergies of the patient.
+     *
+     * @param userId the patient whose allergies are listed
+     * @return the patient's active allergies
+     */
     @Transactional(readOnly = true)
     public List<AllergyView> listAllergies(UUID userId) {
         return allergyUserRepository.findActiveByUserId(userId).stream()
@@ -69,6 +92,13 @@ public class PatientService {
                 .toList();
     }
 
+    /**
+     * Adds an allergy to the patient's profile, creating the allergy and severity when new.
+     *
+     * @param userId the patient the allergy is added to
+     * @param request the allergy data to store
+     * @return the saved allergy
+     */
     @Transactional
     public AllergyView addAllergy(UUID userId, AllergyRequest request) {
         AppUser user = requireUser(userId);
@@ -88,11 +118,19 @@ public class PatientService {
         return toView(saved);
     }
 
+    /**
+     * Updates an existing allergy of the patient.
+     *
+     * @param userId the patient the allergy belongs to
+     * @param allergyUserId the id of the allergy record to update
+     * @param request the new allergy data
+     * @return the updated allergy
+     */
     @Transactional
     public AllergyView updateAllergy(UUID userId, UUID allergyUserId, AllergyRequest request) {
         AllergyUser entity = allergyUserRepository
                 .findByIdAndUserId(allergyUserId, userId)
-                .orElseThrow(() -> new NotFoundException("Allergy not found: " + allergyUserId));
+                .orElseThrow(() -> new NotFoundException(ERROR_ALLERGY_NOT_FOUND + allergyUserId));
         Allergy allergy = allergyRepository
                 .findByNameIgnoreCase(request.name())
                 .orElseGet(() -> allergyRepository.save(Allergy.builder().name(request.name()).build()));
@@ -103,16 +141,28 @@ public class PatientService {
         return toView(allergyUserRepository.save(entity));
     }
 
+    /**
+     * Soft-deletes an allergy of the patient so it can be synced as an explicit removal.
+     *
+     * @param userId the patient the allergy belongs to
+     * @param allergyUserId the id of the allergy record to delete
+     */
     @Transactional
     public void deleteAllergy(UUID userId, UUID allergyUserId) {
         AllergyUser entity = allergyUserRepository
                 .findByIdAndUserId(allergyUserId, userId)
-                .orElseThrow(() -> new NotFoundException("Allergy not found: " + allergyUserId));
+                .orElseThrow(() -> new NotFoundException(ERROR_ALLERGY_NOT_FOUND + allergyUserId));
         entity.setDeleted(true);
         entity.setSynced(false);
         allergyUserRepository.save(entity);
     }
 
+    /**
+     * Lists the active chronic conditions of the patient.
+     *
+     * @param userId the patient whose conditions are listed
+     * @return the patient's active chronic conditions
+     */
     @Transactional(readOnly = true)
     public List<ConditionView> listConditions(UUID userId) {
         return chronicDiseaseUserRepository.findActiveByUserId(userId).stream()
@@ -120,6 +170,13 @@ public class PatientService {
                 .toList();
     }
 
+    /**
+     * Adds a chronic condition to the patient's profile, creating directory entries when new.
+     *
+     * @param userId the patient the condition is added to
+     * @param request the condition data to store
+     * @return the saved chronic condition
+     */
     @Transactional
     public ConditionView addCondition(UUID userId, ConditionRequest request) {
         AppUser user = requireUser(userId);
@@ -142,6 +199,12 @@ public class PatientService {
         return toView(saved);
     }
 
+    /**
+     * Soft-deletes a chronic condition of the patient so it can be synced as an explicit removal.
+     *
+     * @param userId the patient the condition belongs to
+     * @param conditionId the id of the condition record to delete
+     */
     @Transactional
     public void deleteCondition(UUID userId, UUID conditionId) {
         ChronicDiseaseUser entity = chronicDiseaseUserRepository

@@ -1,9 +1,10 @@
 package ru.sovmestim.contract;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import java.util.Set;
 
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
-import java.util.Set;
+
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -38,23 +39,23 @@ class OpenApiSpecTest {
     @Test
     void parsesWithoutErrors() {
         SwaggerParseResult result = OpenApiSpec.parse();
-        assertThat(result.getOpenAPI()).isNotNull();
-        assertThat(result.getMessages()).isEmpty();
+        Assertions.assertThat(result.getOpenAPI()).isNotNull();
+        Assertions.assertThat(result.getMessages()).isEmpty();
     }
 
     @Test
     void documentsTheExpectedOperations() {
-        assertThat(OpenApiSpec.operations()).containsExactlyInAnyOrderElementsOf(EXPECTED_OPERATIONS);
+        Assertions.assertThat(OpenApiSpec.operations()).containsExactlyInAnyOrderElementsOf(EXPECTED_OPERATIONS);
     }
 
     @Test
     void declaresBearerSecurityScheme() {
-        assertThat(OpenApiSpec.openApi().getComponents().getSecuritySchemes()).containsKey("bearerAuth");
+        Assertions.assertThat(OpenApiSpec.openApi().getComponents().getSecuritySchemes()).containsKey("bearerAuth");
     }
 
     @Test
     void declaresCoreSchemas() {
-        assertThat(OpenApiSpec.openApi().getComponents().getSchemas())
+        Assertions.assertThat(OpenApiSpec.openApi().getComponents().getSchemas())
                 .containsKeys(
                         "ApiError",
                         "AdviceCheckRequest",

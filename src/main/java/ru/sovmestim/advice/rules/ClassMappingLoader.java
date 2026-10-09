@@ -6,10 +6,12 @@ import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
 import org.springframework.core.io.Resource;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
+
 import ru.sovmestim.advice.model.AdviceLevel;
 
 /**
@@ -20,6 +22,12 @@ public final class ClassMappingLoader {
     private ClassMappingLoader() {
     }
 
+    /**
+     * Parses the class-mapping file into an immutable mapping table.
+     *
+     * @param resource YAML resource to read
+     * @return parsed class-mapping table
+     */
     @SuppressWarnings("unchecked")
     public static RlsClassMapping load(Resource resource) {
         Map<String, Object> root = readYaml(resource);

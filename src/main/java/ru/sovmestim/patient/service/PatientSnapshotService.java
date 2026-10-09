@@ -4,8 +4,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import ru.sovmestim.advice.model.PatientAllergy;
 import ru.sovmestim.advice.model.PatientCondition;
 import ru.sovmestim.advice.model.PatientSnapshot;
@@ -38,6 +40,16 @@ public class PatientSnapshotService {
     private final CourseMedicineRepository courseMedicineRepository;
     private final SubstanceInMedicineRepository substanceInMedicineRepository;
 
+    /**
+     * Creates the service with the repositories needed to assemble a patient snapshot.
+     *
+     * @param allergyUserRepository repository of the patient's allergies
+     * @param chronicDiseaseUserRepository repository of the patient's chronic diseases
+     * @param userDiseaseRepository repository of patient-entered diseases
+     * @param takenSubstanceRepository repository of substances the patient takes
+     * @param courseMedicineRepository repository of the patient's treatment courses
+     * @param substanceInMedicineRepository repository linking medicines to their active substances
+     */
     public PatientSnapshotService(
             AllergyUserRepository allergyUserRepository,
             ChronicDiseaseUserRepository chronicDiseaseUserRepository,
@@ -53,13 +65,23 @@ public class PatientSnapshotService {
         this.substanceInMedicineRepository = substanceInMedicineRepository;
     }
 
+    /**
+     * Builds a snapshot for the patient including all of their current treatment courses.
+     *
+     * @param userId the patient to build the snapshot for
+     * @return the assembled patient snapshot
+     */
     public PatientSnapshot snapshot(UUID userId) {
         return snapshot(userId, null);
     }
 
     /**
+     * Builds a snapshot for the patient while omitting a single course from the current substances.
+     *
+     * @param userId the patient to build the snapshot for
      * @param excludeCourseMedicineId a course to omit from the current list, typically the one being
      *                                checked, so it is not reported as a duplicate of itself
+     * @return the assembled patient snapshot
      */
     public PatientSnapshot snapshot(UUID userId, UUID excludeCourseMedicineId) {
         return new PatientSnapshot(

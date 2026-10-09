@@ -10,6 +10,13 @@ public enum AdviceLevel {
     AVOID,
     FORBIDDEN;
 
+    /**
+     * Returns the more severe of two levels, treating {@code null} as the less severe one.
+     *
+     * @param a first level, may be {@code null}
+     * @param b second level, may be {@code null}
+     * @return the more severe non-null level, or {@code null} when both are {@code null}
+     */
     public static AdviceLevel max(AdviceLevel a, AdviceLevel b) {
         if (a == null) {
             return b;

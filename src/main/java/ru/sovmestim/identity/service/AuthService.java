@@ -8,11 +8,13 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import ru.sovmestim.common.error.BadRequestException;
 import ru.sovmestim.config.JwtProperties;
 import ru.sovmestim.config.OtpProperties;
@@ -32,7 +34,7 @@ import ru.sovmestim.identity.repository.RefreshTokenRepository;
 @Service
 public class AuthService {
 
-    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AuthService.class);
     private static final int MAX_OTP_ATTEMPTS = 5;
 
     private final AppUserRepository userRepository;
@@ -45,6 +47,18 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    /**
+     * Creates the service with its collaborators.
+     *
+     * @param userRepository repository for application users.
+     * @param otpCodeRepository repository for one-time login codes.
+     * @param refreshTokenRepository repository for refresh tokens.
+     * @param passwordEncoder encoder used to hash codes.
+     * @param otpSender channel that delivers codes to users.
+     * @param jwtService issues access tokens.
+     * @param otpProperties OTP tuning parameters.
+     * @param jwtProperties JWT tuning parameters.
+     */
     public AuthService(
             AppUserRepository userRepository,
             OtpCodeRepository otpCodeRepository,
@@ -64,6 +78,12 @@ public class AuthService {
         this.jwtProperties = jwtProperties;
     }
 
+    /**
+     * Generates a fresh one-time code for the e-mail and sends it to the user.
+     *
+     * @param rawEmail raw e-mail address of the user requesting a code.
+     * @return the response with the normalized e-mail and the code expiry.
+     */
     @Transactional
     public RequestCodeResponse requestCode(String rawEmail) {
         String email = normalizeEmail(rawEmail);
@@ -83,6 +103,14 @@ public class AuthService {
         return new RequestCodeResponse(email, expiresAt, devCode);
     }
 
+    /**
+     * Verifies the submitted code and issues a token pair for the user.
+     *
+     * @param rawEmail raw e-mail address of the user.
+     * @param code the one-time code submitted by the user.
+     * @return the issued access and refresh tokens.
+     * @throws BadRequestException if the code is missing, expired, invalid or over attempts.
+     */
     @Transactional
     public TokenResponse verifyCode(String rawEmail, String code) {
         String email = normalizeEmail(rawEmail);
@@ -109,6 +137,13 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    /**
+     * Exchanges a valid refresh token for a new token pair, rotating the old token.
+     *
+     * @param rawRefreshToken the raw refresh token presented by the client.
+     * @return the issued access and refresh tokens.
+     * @throws BadRequestException if the token is unknown, revoked or expired.
+     */
     @Transactional
     public TokenResponse refresh(String rawRefreshToken) {
         String hash = sha256(rawRefreshToken);
@@ -134,7 +169,7 @@ public class AuthService {
                 .revoked(false)
                 .createdAt(Instant.now())
                 .build());
-        log.debug("Issued tokens for user {}", user.getId());
+        LOG.debug("Issued tokens for user {}", user.getId());
         return TokenResponse.of(accessToken, rawRefresh, jwtService.accessTtlSeconds());
     }
 

@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
+
 import org.springframework.stereotype.Component;
+
 import ru.sovmestim.advice.domain.InteractionSubstances;
 import ru.sovmestim.advice.model.AdviceLevel;
 import ru.sovmestim.advice.model.AdviceSourceRef;
@@ -23,6 +25,11 @@ public class DatabaseInteractionSource implements InteractionSource {
 
     private final InteractionSubstancesRepository repository;
 
+    /**
+     * Creates the cache source over the stored interaction rows.
+     *
+     * @param repository repository reading the {@code interaction_substances} table
+     */
     public DatabaseInteractionSource(InteractionSubstancesRepository repository) {
         this.repository = repository;
     }

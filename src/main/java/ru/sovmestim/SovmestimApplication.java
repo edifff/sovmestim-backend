@@ -17,6 +17,14 @@ import org.springframework.cache.annotation.EnableCaching;
 @EnableCaching
 public class SovmestimApplication {
 
+    private SovmestimApplication() {
+    }
+
+    /**
+     * Bootstraps the application.
+     *
+     * @param args command line arguments
+     */
     public static void main(String[] args) {
         SpringApplication.run(SovmestimApplication.class, args);
     }

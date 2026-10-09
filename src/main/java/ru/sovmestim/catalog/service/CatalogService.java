@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import ru.sovmestim.advice.model.SubstanceRef;
 import ru.sovmestim.catalog.domain.ActiveSubstance;
 import ru.sovmestim.catalog.domain.Medicine;
@@ -34,6 +36,13 @@ public class CatalogService {
     private final MedicineRepository medicineRepository;
     private final SubstanceInMedicineRepository substanceInMedicineRepository;
 
+    /**
+     * Creates the catalog service.
+     *
+     * @param substanceRepository repository for active substances
+     * @param medicineRepository repository for medicines
+     * @param substanceInMedicineRepository repository for medicine-to-substance links
+     */
     public CatalogService(
             ActiveSubstanceRepository substanceRepository,
             MedicineRepository medicineRepository,
@@ -43,6 +52,13 @@ public class CatalogService {
         this.substanceInMedicineRepository = substanceInMedicineRepository;
     }
 
+    /**
+     * Searches active substances by name.
+     *
+     * @param query the name fragment to search for
+     * @param limit the maximum number of results
+     * @return matching substances
+     */
     public List<SubstanceView> searchSubstances(String query, int limit) {
         String normalized = NameNormalizer.normalize(query);
         if (normalized.isBlank()) {
@@ -53,6 +69,13 @@ public class CatalogService {
                 .toList();
     }
 
+    /**
+     * Searches medicines by name or trade mark name.
+     *
+     * @param query the name fragment to search for
+     * @param limit the maximum number of results
+     * @return matching medicines
+     */
     public List<MedicineView> searchMedicines(String query, int limit) {
         String normalized = NameNormalizer.normalize(query);
         if (normalized.isBlank()) {
@@ -62,6 +85,12 @@ public class CatalogService {
         return toMedicineViews(medicines);
     }
 
+    /**
+     * Loads one medicine with all its substances.
+     *
+     * @param id the medicine identifier
+     * @return the medicine view
+     */
     public MedicineView getMedicine(UUID id) {
         Medicine medicine = medicineRepository.findDetailedById(id)
                 .orElseThrow(() -> new NotFoundException("Medicine not found: " + id));
@@ -71,6 +100,9 @@ public class CatalogService {
     /**
      * Resolves an entered drug name either to a medicine (including all its substances) or, when no
      * medicine matches, to a single active substance.
+     *
+     * @param rawName the drug name as entered by the patient
+     * @return the resolution result, or empty when nothing matches
      */
     public Optional<ResolvedDrug> resolveByName(String rawName) {
         String normalized = NameNormalizer.normalize(rawName);
@@ -92,6 +124,12 @@ public class CatalogService {
         return Optional.empty();
     }
 
+    /**
+     * Loads substance references for the given substance identifiers.
+     *
+     * @param ids the substance identifiers, may be null or empty
+     * @return matching substance references
+     */
     public List<SubstanceRef> substancesByIds(List<UUID> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
@@ -99,6 +137,12 @@ public class CatalogService {
         return substanceRepository.findAllByIdIn(ids).stream().map(CatalogService::toSubstanceRef).toList();
     }
 
+    /**
+     * Loads the substances of one medicine.
+     *
+     * @param medicineId the medicine identifier
+     * @return substance references of the medicine
+     */
     public List<SubstanceRef> substancesForMedicine(UUID medicineId) {
         return substancesOf(medicineId);
     }

@@ -11,21 +11,24 @@ import org.springframework.stereotype.Component;
 @Component
 public class LoggingOtpSender implements OtpSender {
 
-    private static final Logger log = LoggerFactory.getLogger(LoggingOtpSender.class);
+    /** Replacement used when masking a destination too short to partially show. */
+    private static final String MASK_REPLACEMENT = "***";
+
+    private static final Logger LOG = LoggerFactory.getLogger(LoggingOtpSender.class);
 
     @Override
     public void send(String destination, String code) {
-        log.info("OTP requested for {}", mask(destination));
+        LOG.info("OTP requested for {}", mask(destination));
     }
 
     static String mask(String value) {
         if (value == null || value.length() < 3) {
-            return "***";
+            return MASK_REPLACEMENT;
         }
         int at = value.indexOf('@');
         String local = at > 0 ? value.substring(0, at) : value;
         String domain = at > 0 ? value.substring(at) : "";
         String head = local.substring(0, Math.min(1, local.length()));
-        return head + "***" + domain;
+        return head + MASK_REPLACEMENT + domain;
     }
 }

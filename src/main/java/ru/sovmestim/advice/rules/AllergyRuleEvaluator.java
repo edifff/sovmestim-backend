@@ -5,7 +5,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+
 import org.springframework.stereotype.Component;
+
 import ru.sovmestim.advice.model.AdviceFinding;
 import ru.sovmestim.advice.model.AdviceKind;
 import ru.sovmestim.advice.model.AdviceLevel;
@@ -23,10 +25,22 @@ public class AllergyRuleEvaluator {
 
     private final AllergyRuleSet rules;
 
+    /**
+     * Creates the evaluator over the configured allergy rules.
+     *
+     * @param rules allergy rule set loaded from configuration
+     */
     public AllergyRuleEvaluator(AllergyRuleSet rules) {
         this.rules = rules;
     }
 
+    /**
+     * Evaluates the patient's allergies against the substances of the checked drug.
+     *
+     * @param allergies patient allergies to match
+     * @param substances active substances of the drug being checked
+     * @return findings for every matched allergy, empty when nothing matches
+     */
     public List<AdviceFinding> evaluate(List<PatientAllergy> allergies, List<SubstanceRef> substances) {
         List<AdviceFinding> findings = new ArrayList<>();
         if (allergies.isEmpty() || substances.isEmpty()) {

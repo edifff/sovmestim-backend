@@ -1,24 +1,23 @@
 package ru.sovmestim.contract;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import com.atlassian.oai.validator.OpenApiInteractionValidator;
 import com.atlassian.oai.validator.model.SimpleRequest;
 import com.atlassian.oai.validator.model.SimpleResponse;
 import com.atlassian.oai.validator.report.ValidationReport;
 import com.jayway.jsonpath.JsonPath;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
 import ru.sovmestim.support.PostgresIntegrationTest;
 
 /**
@@ -26,6 +25,40 @@ import ru.sovmestim.support.PostgresIntegrationTest;
  * Any response shape or status that drifts from the contract fails the build.
  */
 class OpenApiValidationIT extends PostgresIntegrationTest {
+
+    private static final String METHOD_GET = "GET";
+    private static final String METHOD_POST = "POST";
+    private static final String METHOD_PUT = "PUT";
+    private static final String METHOD_DELETE = "DELETE";
+
+    private static final String AUTH_REQUEST_CODE_PATH = "/v1/auth/request-code";
+    private static final String AUTH_VERIFY_PATH = "/v1/auth/verify";
+    private static final String AUTH_REFRESH_PATH = "/v1/auth/refresh";
+    private static final String CATALOG_SUBSTANCES_PATH = "/v1/catalog/substances";
+    private static final String CATALOG_MEDICINES_PATH = "/v1/catalog/medicines";
+    private static final String CATALOG_MEDICINE_BY_ID_PATH = "/v1/catalog/medicines/";
+    private static final String CATALOG_RESOLVE_PATH = "/v1/catalog/resolve";
+    private static final String PROFILE_PATH = "/v1/profile";
+    private static final String PROFILE_ALLERGIES_PATH = "/v1/profile/allergies";
+    private static final String PROFILE_ALLERGY_BY_ID_PATH = "/v1/profile/allergies/";
+    private static final String PROFILE_CONDITIONS_PATH = "/v1/profile/conditions";
+    private static final String MEDICATIONS_PATH = "/v1/medications";
+    private static final String ADVICE_CHECK_PATH = "/v1/advice/check";
+    private static final String ADVICE_RECHECK_PATH = "/v1/advice/recheck";
+    private static final String SYNC_PUSH_PATH = "/v1/sync/push";
+    private static final String SYNC_PULL_PATH = "/v1/sync/pull";
+
+    private static final String QUERY_PARAM = "query";
+    private static final String NAME_PARAM = "name";
+
+    private static final String WARFARIN_QUERY = "варф";
+    private static final String ASPIRIN_MEDICINE = "Аспирин";
+    private static final String ASPIRIN_CARDIO_MEDICINE = "Аспирин Кардио";
+
+    private static final String JSON_EMAIL_PREFIX = "{\"email\":\"";
+    private static final String JSON_BODY_SUFFIX = "\"}";
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String JSON_CONTENT_TYPE = "application/json";
 
     private OpenApiInteractionValidator validator;
 
@@ -38,104 +71,125 @@ class OpenApiValidationIT extends PostgresIntegrationTest {
 
     @Test
     void documentedFlowsConformToTheContract() throws Exception {
+        String token = validateAuthFlows();
+        validateCatalogFlows();
+        validateProfileFlows(token);
+        validateMedicationFlows(token);
+        validateAdviceFlows(token);
+        validateSyncFlows(token);
+    }
+
+    private String validateAuthFlows() throws Exception {
         String email = "contract-" + UUID.randomUUID() + "@example.com";
 
-        // --- Auth ---------------------------------------------------------
-        String requestCodeBody = "{\"email\":\"" + email + "\"}";
-        MvcResult requested = call(post("/v1/auth/request-code").contentType(MediaType.APPLICATION_JSON)
-                .content(requestCodeBody), null);
-        validate("POST", "/v1/auth/request-code", null, null, requestCodeBody, requested);
+        String requestCodeBody = JSON_EMAIL_PREFIX + email + JSON_BODY_SUFFIX;
+        MvcResult requested = call(MockMvcRequestBuilders.post(AUTH_REQUEST_CODE_PATH)
+                .contentType(MediaType.APPLICATION_JSON).content(requestCodeBody), null);
+        validate(METHOD_POST, AUTH_REQUEST_CODE_PATH, null, null, requestCodeBody, requested);
         String code = JsonPath.read(requested.getResponse().getContentAsString(), "$.devCode");
 
-        String verifyBody = "{\"email\":\"" + email + "\",\"code\":\"" + code + "\"}";
-        MvcResult verified = call(post("/v1/auth/verify").contentType(MediaType.APPLICATION_JSON).content(verifyBody), null);
-        validate("POST", "/v1/auth/verify", null, null, verifyBody, verified);
+        String verifyBody = JSON_EMAIL_PREFIX + email + "\",\"code\":\"" + code + JSON_BODY_SUFFIX;
+        MvcResult verified = call(MockMvcRequestBuilders.post(AUTH_VERIFY_PATH)
+                .contentType(MediaType.APPLICATION_JSON).content(verifyBody), null);
+        validate(METHOD_POST, AUTH_VERIFY_PATH, null, null, verifyBody, verified);
         String token = JsonPath.read(verified.getResponse().getContentAsString(), "$.accessToken");
         String refreshToken = JsonPath.read(verified.getResponse().getContentAsString(), "$.refreshToken");
 
-        String refreshBody = "{\"refreshToken\":\"" + refreshToken + "\"}";
-        MvcResult refreshed = call(post("/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshBody), null);
-        validate("POST", "/v1/auth/refresh", null, null, refreshBody, refreshed);
+        String refreshBody = "{\"refreshToken\":\"" + refreshToken + JSON_BODY_SUFFIX;
+        MvcResult refreshed = call(MockMvcRequestBuilders.post(AUTH_REFRESH_PATH)
+                .contentType(MediaType.APPLICATION_JSON).content(refreshBody), null);
+        validate(METHOD_POST, AUTH_REFRESH_PATH, null, null, refreshBody, refreshed);
+        return token;
+    }
 
-        // --- Catalog ------------------------------------------------------
-        MvcResult substances = call(get("/v1/catalog/substances").param("query", "варф"), null);
-        validate("GET", "/v1/catalog/substances", Map.of("query", "варф"), null, null, substances);
+    private void validateCatalogFlows() throws Exception {
+        MvcResult substances = call(MockMvcRequestBuilders.get(CATALOG_SUBSTANCES_PATH)
+                .param(QUERY_PARAM, WARFARIN_QUERY), null);
+        validate(METHOD_GET, CATALOG_SUBSTANCES_PATH, Map.of(QUERY_PARAM, WARFARIN_QUERY), null, null, substances);
 
-        MvcResult medicines = call(get("/v1/catalog/medicines").param("query", "Аспирин"), null);
-        validate("GET", "/v1/catalog/medicines", Map.of("query", "Аспирин"), null, null, medicines);
+        MvcResult medicines = call(MockMvcRequestBuilders.get(CATALOG_MEDICINES_PATH)
+                .param(QUERY_PARAM, ASPIRIN_MEDICINE), null);
+        validate(METHOD_GET, CATALOG_MEDICINES_PATH, Map.of(QUERY_PARAM, ASPIRIN_MEDICINE), null, null, medicines);
         String medicineId = JsonPath.read(medicines.getResponse().getContentAsString(), "$[0].id");
 
-        MvcResult medicine = call(get("/v1/catalog/medicines/" + medicineId), null);
-        validate("GET", "/v1/catalog/medicines/" + medicineId, null, null, null, medicine);
+        MvcResult medicine = call(MockMvcRequestBuilders.get(CATALOG_MEDICINE_BY_ID_PATH + medicineId), null);
+        validate(METHOD_GET, CATALOG_MEDICINE_BY_ID_PATH + medicineId, null, null, null, medicine);
 
-        MvcResult resolved = call(get("/v1/catalog/resolve").param("name", "Аспирин Кардио"), null);
-        validate("GET", "/v1/catalog/resolve", Map.of("name", "Аспирин Кардио"), null, null, resolved);
+        MvcResult resolved = call(MockMvcRequestBuilders.get(CATALOG_RESOLVE_PATH)
+                .param(NAME_PARAM, ASPIRIN_CARDIO_MEDICINE), null);
+        validate(METHOD_GET, CATALOG_RESOLVE_PATH, Map.of(NAME_PARAM, ASPIRIN_CARDIO_MEDICINE), null, null, resolved);
+    }
 
-        // --- Profile ------------------------------------------------------
-        MvcResult profile = call(get("/v1/profile"), token);
-        validate("GET", "/v1/profile", null, token, null, profile);
+    private void validateProfileFlows(String token) throws Exception {
+        MvcResult profile = call(MockMvcRequestBuilders.get(PROFILE_PATH), token);
+        validate(METHOD_GET, PROFILE_PATH, null, token, null, profile);
 
         String allergyBody = "{\"name\":\"ибупрофен\",\"severity\":\"средняя\"}";
-        MvcResult allergyCreated = call(post("/v1/profile/allergies").contentType(MediaType.APPLICATION_JSON)
-                .content(allergyBody), token);
-        validate("POST", "/v1/profile/allergies", null, token, allergyBody, allergyCreated);
+        MvcResult allergyCreated = call(MockMvcRequestBuilders.post(PROFILE_ALLERGIES_PATH)
+                .contentType(MediaType.APPLICATION_JSON).content(allergyBody), token);
+        validate(METHOD_POST, PROFILE_ALLERGIES_PATH, null, token, allergyBody, allergyCreated);
         String allergyId = JsonPath.read(allergyCreated.getResponse().getContentAsString(), "$.id");
 
-        MvcResult allergyList = call(get("/v1/profile/allergies"), token);
-        validate("GET", "/v1/profile/allergies", null, token, null, allergyList);
+        MvcResult allergyList = call(MockMvcRequestBuilders.get(PROFILE_ALLERGIES_PATH), token);
+        validate(METHOD_GET, PROFILE_ALLERGIES_PATH, null, token, null, allergyList);
 
         String allergyUpdateBody = "{\"name\":\"ибупрофен\",\"severity\":\"тяжелая\"}";
-        MvcResult allergyUpdated = call(put("/v1/profile/allergies/" + allergyId)
+        MvcResult allergyUpdated = call(MockMvcRequestBuilders.put(PROFILE_ALLERGY_BY_ID_PATH + allergyId)
                 .contentType(MediaType.APPLICATION_JSON).content(allergyUpdateBody), token);
-        validate("PUT", "/v1/profile/allergies/" + allergyId, null, token, allergyUpdateBody, allergyUpdated);
+        validate(METHOD_PUT, PROFILE_ALLERGY_BY_ID_PATH + allergyId, null, token, allergyUpdateBody, allergyUpdated);
 
-        MvcResult allergyDeleted = call(delete("/v1/profile/allergies/" + allergyId), token);
-        validate("DELETE", "/v1/profile/allergies/" + allergyId, null, token, null, allergyDeleted);
+        MvcResult allergyDeleted = call(MockMvcRequestBuilders.delete(PROFILE_ALLERGY_BY_ID_PATH + allergyId), token);
+        validate(METHOD_DELETE, PROFILE_ALLERGY_BY_ID_PATH + allergyId, null, token, null, allergyDeleted);
 
         String conditionBody = "{\"name\":\"Гипертония\",\"mkbCode\":\"I10\"}";
-        MvcResult conditionCreated = call(post("/v1/profile/conditions").contentType(MediaType.APPLICATION_JSON)
-                .content(conditionBody), token);
-        validate("POST", "/v1/profile/conditions", null, token, conditionBody, conditionCreated);
+        MvcResult conditionCreated = call(MockMvcRequestBuilders.post(PROFILE_CONDITIONS_PATH)
+                .contentType(MediaType.APPLICATION_JSON).content(conditionBody), token);
+        validate(METHOD_POST, PROFILE_CONDITIONS_PATH, null, token, conditionBody, conditionCreated);
 
-        MvcResult conditionList = call(get("/v1/profile/conditions"), token);
-        validate("GET", "/v1/profile/conditions", null, token, null, conditionList);
+        MvcResult conditionList = call(MockMvcRequestBuilders.get(PROFILE_CONDITIONS_PATH), token);
+        validate(METHOD_GET, PROFILE_CONDITIONS_PATH, null, token, null, conditionList);
+    }
 
-        // --- Medications --------------------------------------------------
+    private void validateMedicationFlows(String token) throws Exception {
         String medicationBody = "{\"drugName\":\"Варфарин\",\"dosage\":\"2.5 мг\"}";
-        MvcResult medicationCreated = call(post("/v1/medications").contentType(MediaType.APPLICATION_JSON)
-                .content(medicationBody), token);
-        validate("POST", "/v1/medications", null, token, medicationBody, medicationCreated);
+        MvcResult medicationCreated = call(MockMvcRequestBuilders.post(MEDICATIONS_PATH)
+                .contentType(MediaType.APPLICATION_JSON).content(medicationBody), token);
+        validate(METHOD_POST, MEDICATIONS_PATH, null, token, medicationBody, medicationCreated);
 
-        MvcResult medicationList = call(get("/v1/medications"), token);
-        validate("GET", "/v1/medications", null, token, null, medicationList);
+        MvcResult medicationList = call(MockMvcRequestBuilders.get(MEDICATIONS_PATH), token);
+        validate(METHOD_GET, MEDICATIONS_PATH, null, token, null, medicationList);
+    }
 
-        // --- Advice -------------------------------------------------------
+    private void validateAdviceFlows(String token) throws Exception {
         String adviceBody = "{\"drugName\":\"Аспирин Кардио\"}";
-        MvcResult advice = call(post("/v1/advice/check").contentType(MediaType.APPLICATION_JSON).content(adviceBody), token);
-        validate("POST", "/v1/advice/check", null, token, adviceBody, advice);
+        MvcResult advice = call(MockMvcRequestBuilders.post(ADVICE_CHECK_PATH)
+                .contentType(MediaType.APPLICATION_JSON).content(adviceBody), token);
+        validate(METHOD_POST, ADVICE_CHECK_PATH, null, token, adviceBody, advice);
 
-        MvcResult recheck = call(post("/v1/advice/recheck"), token);
-        validate("POST", "/v1/advice/recheck", null, token, null, recheck);
+        MvcResult recheck = call(MockMvcRequestBuilders.post(ADVICE_RECHECK_PATH), token);
+        validate(METHOD_POST, ADVICE_RECHECK_PATH, null, token, null, recheck);
+    }
 
-        // --- Sync ---------------------------------------------------------
+    private void validateSyncFlows(String token) throws Exception {
         String syncBody = """
                 {"idempotencyKey":"contract","allergies":[
                   {"id":"%s","deleted":false,"name":"пенициллин","severity":"легкая"}],
                  "medications":[
                   {"id":"%s","deleted":false,"drugName":"Варфарин"}]}
                 """.formatted(UUID.randomUUID(), UUID.randomUUID());
-        MvcResult pushed = call(post("/v1/sync/push").contentType(MediaType.APPLICATION_JSON).content(syncBody), token);
-        validate("POST", "/v1/sync/push", null, token, syncBody, pushed);
+        MvcResult pushed = call(MockMvcRequestBuilders.post(SYNC_PUSH_PATH)
+                .contentType(MediaType.APPLICATION_JSON).content(syncBody), token);
+        validate(METHOD_POST, SYNC_PUSH_PATH, null, token, syncBody, pushed);
 
-        MvcResult pulled = call(get("/v1/sync/pull"), token);
-        validate("GET", "/v1/sync/pull", null, token, null, pulled);
+        MvcResult pulled = call(MockMvcRequestBuilders.get(SYNC_PULL_PATH), token);
+        validate(METHOD_GET, SYNC_PULL_PATH, null, token, null, pulled);
     }
 
     private MvcResult call(MockHttpServletRequestBuilder builder, String token) throws Exception {
         if (token != null) {
-            builder.header("Authorization", "Bearer " + token);
+            builder.header("Authorization", BEARER_PREFIX + token);
         }
-        return mockMvc.perform(builder).andReturn();
+        return getMockMvc().perform(builder).andReturn();
     }
 
     private void validate(
@@ -147,26 +201,26 @@ class OpenApiValidationIT extends PostgresIntegrationTest {
             MvcResult result)
             throws Exception {
         SimpleRequest.Builder request = switch (method) {
-            case "GET" -> SimpleRequest.Builder.get(path);
-            case "POST" -> SimpleRequest.Builder.post(path);
-            case "PUT" -> SimpleRequest.Builder.put(path);
-            case "DELETE" -> SimpleRequest.Builder.delete(path);
+            case METHOD_GET -> SimpleRequest.Builder.get(path);
+            case METHOD_POST -> SimpleRequest.Builder.post(path);
+            case METHOD_PUT -> SimpleRequest.Builder.put(path);
+            case METHOD_DELETE -> SimpleRequest.Builder.delete(path);
             default -> throw new IllegalArgumentException("Unsupported method " + method);
         };
         if (query != null) {
             query.forEach(request::withQueryParam);
         }
         if (token != null) {
-            request.withAuthorization("Bearer " + token);
+            request.withAuthorization(BEARER_PREFIX + token);
         }
         if (requestBody != null) {
-            request.withContentType("application/json").withBody(requestBody);
+            request.withContentType(JSON_CONTENT_TYPE).withBody(requestBody);
         }
 
         SimpleResponse.Builder response = SimpleResponse.Builder.status(result.getResponse().getStatus());
         String responseBody = result.getResponse().getContentAsString();
         if (!responseBody.isBlank()) {
-            response.withContentType("application/json").withBody(responseBody);
+            response.withContentType(JSON_CONTENT_TYPE).withBody(responseBody);
         }
 
         ValidationReport report = validator.validate(request.build(), response.build());
@@ -174,6 +228,6 @@ class OpenApiValidationIT extends PostgresIntegrationTest {
                 .filter(message -> message.getLevel() == ValidationReport.Level.ERROR)
                 .map(message -> message.getKey() + ": " + message.getMessage())
                 .toList();
-        assertThat(errors).as("Contract violations for %s %s", method, path).isEmpty();
+        Assertions.assertThat(errors).as("Contract violations for %s %s", method, path).isEmpty();
     }
 }

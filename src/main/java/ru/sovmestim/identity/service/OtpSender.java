@@ -6,5 +6,11 @@ package ru.sovmestim.identity.service;
  */
 public interface OtpSender {
 
+    /**
+     * Delivers the one-time code to the given destination.
+     *
+     * @param destination e-mail address or phone number the code is sent to.
+     * @param code the one-time code to deliver.
+     */
     void send(String destination, String code);
 }

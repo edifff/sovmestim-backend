@@ -1,13 +1,14 @@
 package ru.sovmestim.advice.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
+
 import ru.sovmestim.advice.model.AdviceFinding;
 import ru.sovmestim.advice.model.AdviceKind;
 import ru.sovmestim.advice.model.AdviceLevel;
@@ -25,9 +26,15 @@ import ru.sovmestim.advice.rules.ClassMappingLoader;
 import ru.sovmestim.advice.rules.RlsClassMapping;
 import ru.sovmestim.advice.source.InteractionSource;
 
+/**
+ * Tests for the advice engine's classification of drug, allergy, and data findings.
+ */
 class AdviceEngineTest {
 
     private static final String CATALOG_VERSION = "test-catalog";
+    private static final String WARFARIN = "варфарин";
+    private static final String WARFARIN_ATC = "B01AA";
+    private static final String AMOXICILLIN = "амоксициллин";
 
     private RlsClassMapping mapping;
     private AllergyRuleSet rules;
@@ -42,7 +49,7 @@ class AdviceEngineTest {
 
     @Test
     void mapsInteractionClassToDangerLevel() {
-        SubstanceRef warfarin = substance("варфарин", "B01AA");
+        SubstanceRef warfarin = substance(WARFARIN, WARFARIN_ATC);
         SubstanceRef aspirin = substance("ацетилсалициловая кислота", "B01AC");
         AdviceEngine engine = engine(List.of(interaction(warfarin, aspirin, "pharm", "synergism", "increase_toxicity", null)));
 
@@ -51,9 +58,9 @@ class AdviceEngineTest {
                 new DrugRef(null, "Аспирин", List.of(aspirin)),
                 CATALOG_VERSION);
 
-        assertThat(result.status()).isEqualTo(AdviceStatus.INTERACTION_FOUND);
-        assertThat(result.level()).isEqualTo(AdviceLevel.AVOID);
-        assertThat(result.findings()).extracting(AdviceFinding::kind).contains(AdviceKind.DRUG_DRUG);
+        Assertions.assertThat(result.status()).isEqualTo(AdviceStatus.INTERACTION_FOUND);
+        Assertions.assertThat(result.level()).isEqualTo(AdviceLevel.AVOID);
+        Assertions.assertThat(result.findings()).extracting(AdviceFinding::kind).contains(AdviceKind.DRUG_DRUG);
     }
 
     @Test
@@ -67,12 +74,12 @@ class AdviceEngineTest {
                 new DrugRef(null, "Йогексол", List.of(b)),
                 CATALOG_VERSION);
 
-        assertThat(result.level()).isEqualTo(AdviceLevel.FORBIDDEN);
+        Assertions.assertThat(result.level()).isEqualTo(AdviceLevel.FORBIDDEN);
     }
 
     @Test
     void emptySourceResponseIsNotSafe() {
-        SubstanceRef current = substance("варфарин", "B01AA");
+        SubstanceRef current = substance(WARFARIN, WARFARIN_ATC);
         SubstanceRef drug = substance("омепразол", "A02BC");
         AdviceEngine engine = engine(List.of());
 
@@ -81,8 +88,8 @@ class AdviceEngineTest {
                 new DrugRef(null, "Омепразол", List.of(drug)),
                 CATALOG_VERSION);
 
-        assertThat(result.status()).isEqualTo(AdviceStatus.NO_INTERACTIONS_REPORTED);
-        assertThat(result.level()).isNull();
+        Assertions.assertThat(result.status()).isEqualTo(AdviceStatus.NO_INTERACTIONS_REPORTED);
+        Assertions.assertThat(result.level()).isNull();
     }
 
     @Test
@@ -91,37 +98,37 @@ class AdviceEngineTest {
         AdviceResult result = engine.check(
                 PatientSnapshot.empty(UUID.randomUUID()), new DrugRef(null, "неизвестное", List.of()), CATALOG_VERSION);
 
-        assertThat(result.status()).isEqualTo(AdviceStatus.INSUFFICIENT_DATA);
+        Assertions.assertThat(result.status()).isEqualTo(AdviceStatus.INSUFFICIENT_DATA);
     }
 
     @Test
     void duplicateSubstanceIsReported() {
-        SubstanceRef warfarin = substance("варфарин", "B01AA");
+        SubstanceRef warfarin = substance(WARFARIN, WARFARIN_ATC);
         AdviceEngine engine = engine(List.of());
 
         AdviceResult result = engine.check(
                 new PatientSnapshot(UUID.randomUUID(), List.of(warfarin), List.of(), List.of()),
-                new DrugRef(null, "Варфарин", List.of(substance("варфарин", "B01AA"))),
+                new DrugRef(null, "Варфарин", List.of(substance(WARFARIN, WARFARIN_ATC))),
                 CATALOG_VERSION);
 
-        assertThat(result.status()).isEqualTo(AdviceStatus.INTERACTION_FOUND);
-        assertThat(result.findings()).extracting(AdviceFinding::kind).contains(AdviceKind.DUPLICATE_SUBSTANCE);
+        Assertions.assertThat(result.status()).isEqualTo(AdviceStatus.INTERACTION_FOUND);
+        Assertions.assertThat(result.findings()).extracting(AdviceFinding::kind).contains(AdviceKind.DUPLICATE_SUBSTANCE);
     }
 
     @Test
     void allergyFindingIsIncluded() {
-        SubstanceRef drug = substance("амоксициллин", "J01C");
+        SubstanceRef drug = substance(AMOXICILLIN, "J01C");
         AdviceEngine engine = engine(List.of());
 
         AdviceResult result = engine.check(
                 new PatientSnapshot(
-                        UUID.randomUUID(), List.of(), List.of(new PatientAllergy("амоксициллин", null, "тяжелая")), List.of()),
+                        UUID.randomUUID(), List.of(), List.of(new PatientAllergy(AMOXICILLIN, null, "тяжелая")), List.of()),
                 new DrugRef(null, "Амоксициллин", List.of(drug)),
                 CATALOG_VERSION);
 
-        assertThat(result.status()).isEqualTo(AdviceStatus.INTERACTION_FOUND);
-        assertThat(result.level()).isEqualTo(AdviceLevel.FORBIDDEN);
-        assertThat(result.findings()).extracting(AdviceFinding::kind).contains(AdviceKind.DRUG_ALLERGY);
+        Assertions.assertThat(result.status()).isEqualTo(AdviceStatus.INTERACTION_FOUND);
+        Assertions.assertThat(result.level()).isEqualTo(AdviceLevel.FORBIDDEN);
+        Assertions.assertThat(result.findings()).extracting(AdviceFinding::kind).contains(AdviceKind.DRUG_ALLERGY);
     }
 
     private AdviceEngine engine(List<SubstanceInteraction> interactions) {

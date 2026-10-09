@@ -4,7 +4,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
 import org.springframework.core.io.Resource;
+
 import ru.sovmestim.advice.model.AdviceLevel;
 import ru.sovmestim.common.util.NameNormalizer;
 
@@ -16,6 +18,12 @@ public final class AllergyRuleLoader {
     private AllergyRuleLoader() {
     }
 
+    /**
+     * Parses the allergy rules file into an immutable rule set.
+     *
+     * @param resource YAML resource to read
+     * @return parsed allergy rule set
+     */
     @SuppressWarnings("unchecked")
     public static AllergyRuleSet load(Resource resource) {
         Map<String, Object> root = ClassMappingLoader.readYaml(resource);

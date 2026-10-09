@@ -1,66 +1,74 @@
 package ru.sovmestim.advice;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
 import ru.sovmestim.support.PostgresIntegrationTest;
 
+/**
+ * Integration tests for the advice endpoints.
+ */
 class AdviceIT extends PostgresIntegrationTest {
+
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String CHECK_ENDPOINT = "/v1/advice/check";
+    private static final String RESULT_STATUS_PATH = "$.result.status";
+    private static final String RESULT_LEVEL_PATH = "$.result.level";
+    private static final String STATUS_INTERACTION_FOUND = "INTERACTION_FOUND";
 
     @Test
     void detectsDrugDrugInteractionForCurrentMedication() throws Exception {
         String token = bearer(loginAndGetToken());
 
-        mockMvc.perform(post("/v1/medications")
-                        .header("Authorization", token)
+        getMockMvc().perform(MockMvcRequestBuilders.post("/v1/medications")
+                        .header(AUTHORIZATION_HEADER, token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"drugName\":\"Варфарин\"}"))
-                .andExpect(status().isCreated());
+                .andExpect(MockMvcResultMatchers.status().isCreated());
 
-        mockMvc.perform(post("/v1/advice/check")
-                        .header("Authorization", token)
+        getMockMvc().perform(MockMvcRequestBuilders.post(CHECK_ENDPOINT)
+                        .header(AUTHORIZATION_HEADER, token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"drugName\":\"Аспирин Кардио\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.adviceId").isNotEmpty())
-                .andExpect(jsonPath("$.result.status").value("INTERACTION_FOUND"))
-                .andExpect(jsonPath("$.result.level").value("AVOID"))
-                .andExpect(jsonPath("$.result.findings[0].kind").value("DRUG_DRUG"));
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.adviceId").isNotEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath(RESULT_STATUS_PATH).value(STATUS_INTERACTION_FOUND))
+                .andExpect(MockMvcResultMatchers.jsonPath(RESULT_LEVEL_PATH).value("AVOID"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.result.findings[0].kind").value("DRUG_DRUG"));
     }
 
     @Test
     void allergyDrivesForbiddenLevel() throws Exception {
         String token = bearer(loginAndGetToken());
 
-        mockMvc.perform(post("/v1/profile/allergies")
-                        .header("Authorization", token)
+        getMockMvc().perform(MockMvcRequestBuilders.post("/v1/profile/allergies")
+                        .header(AUTHORIZATION_HEADER, token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"ибупрофен\",\"severity\":\"тяжелая\"}"))
-                .andExpect(status().isCreated());
+                .andExpect(MockMvcResultMatchers.status().isCreated());
 
-        mockMvc.perform(post("/v1/advice/check")
-                        .header("Authorization", token)
+        getMockMvc().perform(MockMvcRequestBuilders.post(CHECK_ENDPOINT)
+                        .header(AUTHORIZATION_HEADER, token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"drugName\":\"Ибупрофен\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.status").value("INTERACTION_FOUND"))
-                .andExpect(jsonPath("$.result.level").value("FORBIDDEN"))
-                .andExpect(jsonPath("$.result.findings[?(@.kind == 'DRUG_ALLERGY')]").exists());
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath(RESULT_STATUS_PATH).value(STATUS_INTERACTION_FOUND))
+                .andExpect(MockMvcResultMatchers.jsonPath(RESULT_LEVEL_PATH).value("FORBIDDEN"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.result.findings[?(@.kind == 'DRUG_ALLERGY')]").exists());
     }
 
     @Test
     void unresolvedDrugReturnsInsufficientDataNotError() throws Exception {
         String token = bearer(loginAndGetToken());
 
-        mockMvc.perform(post("/v1/advice/check")
-                        .header("Authorization", token)
+        getMockMvc().perform(MockMvcRequestBuilders.post(CHECK_ENDPOINT)
+                        .header(AUTHORIZATION_HEADER, token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"drugName\":\"Несуществующий препарат\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.status").value("INSUFFICIENT_DATA"));
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath(RESULT_STATUS_PATH).value("INSUFFICIENT_DATA"));
     }
 
     private static String bearer(String token) {

@@ -7,7 +7,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
+
 import ru.sovmestim.advice.model.AdviceFinding;
 import ru.sovmestim.advice.model.AdviceKind;
 import ru.sovmestim.advice.model.AdviceLevel;
@@ -32,11 +35,22 @@ import ru.sovmestim.common.util.NameNormalizer;
 @Service
 public class AdviceEngine {
 
+    /** Separator used in the canonical pair key of two substances. */
+    private static final String PAIR_SEPARATOR = "|";
+
     private final List<InteractionSource> sources;
     private final RlsClassMapping classMapping;
     private final AllergyRuleEvaluator allergyEvaluator;
     private final AllergyRuleSet allergyRules;
 
+    /**
+     * Creates the engine over the configured interaction sources and own rules.
+     *
+     * @param sources interaction sources consulted in order
+     * @param classMapping class-to-level mapping table
+     * @param allergyEvaluator own drug-allergy rule
+     * @param allergyRules allergy rule set providing the rules version
+     */
     public AdviceEngine(
             List<InteractionSource> sources,
             RlsClassMapping classMapping,
@@ -48,39 +62,21 @@ public class AdviceEngine {
         this.allergyRules = allergyRules;
     }
 
+    /**
+     * Runs the full advice check for the given patient and drug.
+     *
+     * @param patient patient state at check time
+     * @param drug drug being checked
+     * @param catalogVersion catalog version recorded for provenance
+     * @return composed advice result with status, findings and notes
+     */
     public AdviceResult check(PatientSnapshot patient, DrugRef drug, String catalogVersion) {
         List<SubstanceRef> distinct = distinct(patient.currentSubstances(), drug.substances());
         List<String> notes = new ArrayList<>();
         List<AdviceFinding> findings = new ArrayList<>();
 
-        List<SubstanceInteraction> interactions = gather(distinct);
-        Set<String> drugSubstances = drug.substances().stream()
-                .map(substance -> NameNormalizer.normalize(substance.name()))
-                .collect(java.util.stream.Collectors.toSet());
-
-        for (SubstanceInteraction interaction : interactions) {
-            boolean involvesDrug = drugSubstances.contains(NameNormalizer.normalize(interaction.substance1().name()))
-                    || drugSubstances.contains(NameNormalizer.normalize(interaction.substance2().name()));
-            if (!involvesDrug) {
-                continue;
-            }
-            findings.add(toFinding(interaction));
-        }
-
-        for (SubstanceRef substance : drug.substances()) {
-            boolean duplicate = patient.currentSubstances().stream()
-                    .anyMatch(current -> NameNormalizer.matches(current.name(), substance.name()));
-            if (duplicate) {
-                findings.add(new AdviceFinding(
-                        AdviceKind.DUPLICATE_SUBSTANCE,
-                        AdviceLevel.CAUTION,
-                        "Дублирование: " + substance.name(),
-                        "Действующее вещество уже присутствует в списке текущих приёмов.",
-                        List.of(substance.name()),
-                        List.of(new AdviceSourceRef("own-rule", "duplicate_check", null, null))));
-            }
-        }
-
+        findings.addAll(interactionFindings(drug, gather(distinct)));
+        findings.addAll(duplicateFindings(patient, drug));
         findings.addAll(allergyEvaluator.evaluate(patient.allergies(), drug.substances()));
 
         if (!patient.conditions().isEmpty()) {
@@ -114,6 +110,40 @@ public class AdviceEngine {
                 catalogVersion,
                 Instant.now(),
                 List.copyOf(notes));
+    }
+
+    private List<AdviceFinding> interactionFindings(DrugRef drug, List<SubstanceInteraction> interactions) {
+        List<AdviceFinding> findings = new ArrayList<>();
+        Set<String> drugSubstances = drug.substances().stream()
+                .map(substance -> NameNormalizer.normalize(substance.name()))
+                .collect(Collectors.toSet());
+        for (SubstanceInteraction interaction : interactions) {
+            boolean involvesDrug = drugSubstances.contains(NameNormalizer.normalize(interaction.substance1().name()))
+                    || drugSubstances.contains(NameNormalizer.normalize(interaction.substance2().name()));
+            if (!involvesDrug) {
+                continue;
+            }
+            findings.add(toFinding(interaction));
+        }
+        return findings;
+    }
+
+    private List<AdviceFinding> duplicateFindings(PatientSnapshot patient, DrugRef drug) {
+        List<AdviceFinding> findings = new ArrayList<>();
+        for (SubstanceRef substance : drug.substances()) {
+            boolean duplicate = patient.currentSubstances().stream()
+                    .anyMatch(current -> NameNormalizer.matches(current.name(), substance.name()));
+            if (duplicate) {
+                findings.add(new AdviceFinding(
+                        AdviceKind.DUPLICATE_SUBSTANCE,
+                        AdviceLevel.CAUTION,
+                        "Дублирование: " + substance.name(),
+                        "Действующее вещество уже присутствует в списке текущих приёмов.",
+                        List.of(substance.name()),
+                        List.of(new AdviceSourceRef("own-rule", "duplicate_check", null, null))));
+            }
+        }
+        return findings;
     }
 
     private AdviceFinding toFinding(SubstanceInteraction interaction) {
@@ -153,7 +183,7 @@ public class AdviceEngine {
     private static String pairKey(SubstanceInteraction interaction) {
         String first = NameNormalizer.normalize(interaction.substance1().name());
         String second = NameNormalizer.normalize(interaction.substance2().name());
-        return first.compareTo(second) <= 0 ? first + "|" + second : second + "|" + first;
+        return first.compareTo(second) <= 0 ? first + PAIR_SEPARATOR + second : second + PAIR_SEPARATOR + first;
     }
 
     private static List<SubstanceRef> distinct(List<SubstanceRef> first, List<SubstanceRef> second) {

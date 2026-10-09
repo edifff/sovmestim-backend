@@ -1,13 +1,19 @@
 package ru.sovmestim.advice.rules;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
+
 import ru.sovmestim.advice.model.AdviceLevel;
 
+/**
+ * Tests for loading and resolving the RLS class mapping.
+ */
 class ClassMappingLoaderTest {
+
+    private static final String PHARM_CLASS = "pharm";
+    private static final String SYNERGISM_SUBCLASS = "synergism";
 
     private static RlsClassMapping mapping;
 
@@ -18,28 +24,28 @@ class ClassMappingLoaderTest {
 
     @Test
     void readsVersionAndDefaultLevel() {
-        assertThat(mapping.version()).isEqualTo("1.0.0");
-        assertThat(mapping.defaultLevel()).isEqualTo(AdviceLevel.INFO);
+        Assertions.assertThat(mapping.version()).isEqualTo("1.0.0");
+        Assertions.assertThat(mapping.defaultLevel()).isEqualTo(AdviceLevel.INFO);
     }
 
     @Test
     void resolvesExactEntry() {
-        assertThat(mapping.resolve("pharm", "metabolism", "increase_exposure").level())
+        Assertions.assertThat(mapping.resolve(PHARM_CLASS, "metabolism", "increase_exposure").level())
                 .isEqualTo(AdviceLevel.AVOID);
-        assertThat(mapping.resolve("contra", null, "contrast_nephropathy").level())
+        Assertions.assertThat(mapping.resolve("contra", null, "contrast_nephropathy").level())
                 .isEqualTo(AdviceLevel.FORBIDDEN);
     }
 
     @Test
     void prefersMostSpecificEntry() {
         // "pharm" alone is a CAUTION fallback, but the precise subclass/direction wins.
-        assertThat(mapping.resolve("pharm", "synergism", "increase_toxicity").level())
+        Assertions.assertThat(mapping.resolve(PHARM_CLASS, SYNERGISM_SUBCLASS, "increase_toxicity").level())
                 .isEqualTo(AdviceLevel.AVOID);
-        assertThat(mapping.resolve("pharm", "synergism", "unknown").level()).isEqualTo(AdviceLevel.CAUTION);
+        Assertions.assertThat(mapping.resolve(PHARM_CLASS, SYNERGISM_SUBCLASS, "unknown").level()).isEqualTo(AdviceLevel.CAUTION);
     }
 
     @Test
     void fallsBackToDefaultForUnknownClass() {
-        assertThat(mapping.resolve("totally-unknown", null, null).level()).isEqualTo(AdviceLevel.INFO);
+        Assertions.assertThat(mapping.resolve("totally-unknown", null, null).level()).isEqualTo(AdviceLevel.INFO);
     }
 }

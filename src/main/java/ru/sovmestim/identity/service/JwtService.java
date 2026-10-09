@@ -1,12 +1,14 @@
 package ru.sovmestim.identity.service;
 
 import java.time.Instant;
+
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
+
 import ru.sovmestim.config.JwtProperties;
 import ru.sovmestim.identity.domain.AppUser;
 
@@ -20,11 +22,23 @@ public class JwtService {
     private final JwtEncoder encoder;
     private final JwtProperties properties;
 
+    /**
+     * Creates the service with the encoder and the JWT settings.
+     *
+     * @param encoder Spring's JWT encoder.
+     * @param properties configured issuer and time-to-live settings.
+     */
     public JwtService(JwtEncoder encoder, JwtProperties properties) {
         this.encoder = encoder;
         this.properties = properties;
     }
 
+    /**
+     * Issues a short-lived HS256 access token for the user.
+     *
+     * @param user the user the token is issued for.
+     * @return the signed JWT as a string.
+     */
     public String issueAccessToken(AppUser user) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -38,6 +52,11 @@ public class JwtService {
         return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
     }
 
+    /**
+     * Returns the configured access token lifetime.
+     *
+     * @return the access token time-to-live in seconds.
+     */
     public long accessTtlSeconds() {
         return properties.accessTtl().toSeconds();
     }

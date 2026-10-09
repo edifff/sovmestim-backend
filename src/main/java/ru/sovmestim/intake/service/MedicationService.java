@@ -3,8 +3,10 @@ package ru.sovmestim.intake.service;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import ru.sovmestim.catalog.domain.Medicine;
 import ru.sovmestim.catalog.repository.MedicineRepository;
 import ru.sovmestim.catalog.service.CatalogService;
@@ -29,6 +31,14 @@ public class MedicationService {
     private final CourseMedicineRepository courseMedicineRepository;
     private final CatalogService catalogService;
 
+    /**
+     * Creates the service with the repositories it needs to manage medication courses.
+     *
+     * @param userRepository repository for patient accounts
+     * @param medicineRepository repository for catalog medicines
+     * @param courseMedicineRepository repository for medication courses
+     * @param catalogService catalog lookups used to resolve drug names
+     */
     public MedicationService(
             AppUserRepository userRepository,
             MedicineRepository medicineRepository,
@@ -40,6 +50,12 @@ public class MedicationService {
         this.catalogService = catalogService;
     }
 
+    /**
+     * Lists the patient's active medication courses.
+     *
+     * @param userId the patient's user id
+     * @return views of the active medication courses
+     */
     @Transactional(readOnly = true)
     public List<CourseMedicineView> list(UUID userId) {
         return courseMedicineRepository.findActiveByUserId(userId).stream()
@@ -50,6 +66,9 @@ public class MedicationService {
     /**
      * Ids of the patient's active courses; used to recheck advice after a profile change or a
      * rules/catalog update. A specific course can then be excluded from its own check.
+     *
+     * @param userId the patient's user id
+     * @return ids of the active medication courses
      */
     @Transactional(readOnly = true)
     public List<UUID> activeCourseIds(UUID userId) {
@@ -58,6 +77,13 @@ public class MedicationService {
                 .toList();
     }
 
+    /**
+     * Finds the catalog medicine of a course owned by the given patient.
+     *
+     * @param courseId medication course id
+     * @param userId the patient's user id
+     * @return the medicine id, or empty when the course is missing or not owned by the patient
+     */
     @Transactional(readOnly = true)
     public java.util.Optional<UUID> medicineIdForCourse(UUID courseId, UUID userId) {
         return courseMedicineRepository
@@ -66,6 +92,13 @@ public class MedicationService {
                 .map(course -> course.getMedicine().getId());
     }
 
+    /**
+     * Adds a medication course for the patient, resolving the medicine from the catalog when needed.
+     *
+     * @param userId the patient's user id
+     * @param request the course to add
+     * @return the stored course as a view
+     */
     @Transactional
     public CourseMedicineView add(UUID userId, CourseMedicineRequest request) {
         AppUser user = userRepository.findById(userId)
@@ -83,6 +116,12 @@ public class MedicationService {
         return toView(saved);
     }
 
+    /**
+     * Marks the patient's medication course as deleted.
+     *
+     * @param userId the patient's user id
+     * @param courseMedicineId id of the course to delete
+     */
     @Transactional
     public void delete(UUID userId, UUID courseMedicineId) {
         CourseMedicine entity = courseMedicineRepository
