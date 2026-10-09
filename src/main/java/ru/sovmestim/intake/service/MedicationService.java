@@ -121,8 +121,7 @@ public class MedicationService {
                 .findById(courseMedicineId)
                 .filter(course -> course.getUser().getId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("Medication not found: " + courseMedicineId));
-        entity.setDeleted(true);
-        entity.setSynced(false);
+        entity.markDeleted();
         courseMedicineRepository.save(entity);
         LOG.debug("User {} deleted medication course {}", userId, courseMedicineId);
     }

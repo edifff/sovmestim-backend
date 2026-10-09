@@ -217,8 +217,7 @@ public class SyncService {
         if (existing.isPresent()) {
             AllergyUser entity = existing.get();
             if (change.deleted()) {
-                entity.setDeleted(true);
-                entity.setSynced(true);
+                entity.markDeletedSynced();
                 allergyUserRepository.save(entity);
                 return appliedProfile(TYPE_ALLERGY, entity.getId());
             }
@@ -261,8 +260,7 @@ public class SyncService {
         if (existing.isPresent()) {
             ChronicDiseaseUser entity = existing.get();
             if (change.deleted()) {
-                entity.setDeleted(true);
-                entity.setSynced(true);
+                entity.markDeletedSynced();
                 chronicDiseaseUserRepository.save(entity);
                 return appliedProfile(TYPE_CONDITION, entity.getId());
             }
@@ -305,8 +303,7 @@ public class SyncService {
         if (existing.isPresent()) {
             CourseMedicine entity = existing.get();
             if (change.deleted()) {
-                entity.setDeleted(true);
-                entity.setSynced(true);
+                entity.markDeletedSynced();
                 courseMedicineRepository.save(entity);
                 return appliedNoop(TYPE_MEDICATION, entity.getId());
             }

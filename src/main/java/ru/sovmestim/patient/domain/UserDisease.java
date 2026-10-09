@@ -1,14 +1,12 @@
 package ru.sovmestim.patient.domain;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,9 +16,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import ru.sovmestim.common.persistence.AbstractSyncedEntity;
 import ru.sovmestim.identity.domain.AppUser;
 
 /**
@@ -31,9 +28,8 @@ import ru.sovmestim.identity.domain.AppUser;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class UserDisease {
+@SuperBuilder
+public class UserDisease extends AbstractSyncedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -60,19 +56,4 @@ public class UserDisease {
 
     @Column(name = "onset_date")
     private LocalDate onsetDate;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
-    @Column(name = "is_synced", nullable = false)
-    private boolean synced;
-
-    @Column(name = "is_deleted", nullable = false)
-    private boolean deleted;
-
-    @PrePersist
-    @PreUpdate
-    void touch() {
-        updatedAt = Instant.now();
-    }
 }

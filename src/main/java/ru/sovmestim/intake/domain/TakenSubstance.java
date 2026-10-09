@@ -1,15 +1,13 @@
 package ru.sovmestim.intake.domain;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,11 +17,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import ru.sovmestim.catalog.domain.ActiveSubstance;
 import ru.sovmestim.catalog.domain.Medicine;
+import ru.sovmestim.common.persistence.AbstractSyncedEntity;
 import ru.sovmestim.patient.domain.Status;
 
 /**
@@ -35,9 +32,8 @@ import ru.sovmestim.patient.domain.Status;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class TakenSubstance {
+@SuperBuilder
+public class TakenSubstance extends AbstractSyncedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -68,19 +64,4 @@ public class TakenSubstance {
 
     @Column(name = "end_date")
     private LocalDate endDate;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
-    @Column(name = "is_synced", nullable = false)
-    private boolean synced;
-
-    @Column(name = "is_deleted", nullable = false)
-    private boolean deleted;
-
-    @PrePersist
-    @PreUpdate
-    void touch() {
-        updatedAt = Instant.now();
-    }
 }

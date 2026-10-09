@@ -124,8 +124,7 @@ public class PatientService {
         AllergyUser entity = allergyUserRepository
                 .findByIdAndUserId(allergyUserId, userId)
                 .orElseThrow(() -> new NotFoundException(ERROR_ALLERGY_NOT_FOUND + allergyUserId));
-        entity.setDeleted(true);
-        entity.setSynced(false);
+        entity.markDeleted();
         allergyUserRepository.save(entity);
     }
 
@@ -182,8 +181,7 @@ public class PatientService {
         ChronicDiseaseUser entity = chronicDiseaseUserRepository
                 .findByIdAndUserId(conditionId, userId)
                 .orElseThrow(() -> new NotFoundException("Condition not found: " + conditionId));
-        entity.setDeleted(true);
-        entity.setSynced(false);
+        entity.markDeleted();
         chronicDiseaseUserRepository.save(entity);
     }
 
