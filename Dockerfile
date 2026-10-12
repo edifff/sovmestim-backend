@@ -11,6 +11,8 @@ WORKDIR /workspace
 COPY pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q -DskipTests dependency:resolve
 
+# checkstyle.xml is referenced by maven-checkstyle-plugin and must exist at build time.
+COPY checkstyle.xml ./
 COPY src ./src
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q -DskipTests package
 
