@@ -2,13 +2,17 @@ package ru.sovmestim.identity.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
  * Development {@link OtpSender} that only writes a masked destination to the log. The code itself is
  * never logged (the demo {@code debug-return-code} switch is the supported way to read it).
+ *
+ * <p>Active unless another channel (for example {@code smtp}) is selected.
  */
 @Component
+@ConditionalOnProperty(prefix = "sovmestim.otp", name = "channel", havingValue = "log", matchIfMissing = true)
 public class LoggingOtpSender implements OtpSender {
 
     /** Replacement used when masking a destination too short to partially show. */

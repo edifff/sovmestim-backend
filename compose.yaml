@@ -30,7 +30,13 @@ services:
       # Demo mode: recorded RLS responses and a seeded catalog, zero paid calls.
       SOVMESTIM_RLS_MODE: demo
       SOVMESTIM_DEMO_SEED: "true"
-      SOVMESTIM_OTP_DEBUG: "true"
+      SOVMESTIM_OTP_CHANNEL: ${SOVMESTIM_OTP_CHANNEL:-log}
+      SOVMESTIM_OTP_DEBUG: ${SOVMESTIM_OTP_DEBUG:-true}
+      SOVMESTIM_OTP_FROM: ${SOVMESTIM_OTP_FROM:-}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
     ports:
       - "8080:8080"
 

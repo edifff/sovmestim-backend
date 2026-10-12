@@ -31,6 +31,15 @@ spring:
       # Bounded so a cold cache cannot grow without limit; short TTL keeps imported catalog
       # changes from being served stale for long (the import also evicts explicitly).
       spec: maximumSize=10000,expireAfterWrite=30m
+  mail:
+    # SMTP is used only when sovmestim.otp.channel=smtp. Host and credentials come from the
+    # environment (see .env.example); these defaults suit a 587/STARTTLS provider.
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 # Swagger UI is served at /swagger-ui.html and loads the hand-written contract at /openapi.yaml.
 # The UI is pinned to that file (disable-swagger-default-url) so the contract stays the source of truth.
@@ -54,6 +63,10 @@ sovmestim:
     access-ttl: PT15M
     refresh-ttl: P30D
   otp:
+    # log -> write a masked address to the log (dev); smtp -> send a real e-mail.
+    channel: ${SOVMESTIM_OTP_CHANNEL:log}
+    # Sender address of OTP e-mails; required when channel=smtp.
+    from: ${SOVMESTIM_OTP_FROM:}
     ttl: PT10M
     # Demo/development switch: return the generated code in the response instead of e-mailing it.
     debug-return-code: ${SOVMESTIM_OTP_DEBUG:true}
