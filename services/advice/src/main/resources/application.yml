@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: sovmestim-advice
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5436/sovmestim_advice}
+    username: ${SPRING_DATASOURCE_USERNAME:sovmestim}
+    password: ${SPRING_DATASOURCE_PASSWORD:sovmestim}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        default_batch_fetch_size: 50
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=10000,expireAfterWrite=30m
+
+server:
+  port: ${SERVER_PORT:8085}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      # Kubernetes probes: liveness ignores the database, readiness requires it.
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+
+sovmestim:
+  grpc:
+    port: ${SOVMESTIM_GRPC_PORT:9095}
+    clients:
+      catalog:
+        host: ${SOVMESTIM_CATALOG_GRPC_HOST:localhost}
+        port: ${SOVMESTIM_CATALOG_GRPC_PORT:9093}
+      patient:
+        host: ${SOVMESTIM_PATIENT_GRPC_HOST:localhost}
+        port: ${SOVMESTIM_PATIENT_GRPC_PORT:9092}
+      intake:
+        host: ${SOVMESTIM_INTAKE_GRPC_HOST:localhost}
+        port: ${SOVMESTIM_INTAKE_GRPC_PORT:9094}
+  rls:
+    mode: ${SOVMESTIM_RLS_MODE:demo}
+    base-url: ${SOVMESTIM_RLS_BASE_URL:}
+    api-key: ${SOVMESTIM_RLS_API_KEY:}
+    connect-timeout: PT2S
+    read-timeout: PT5S
+  rules:
+    class-mapping: classpath:rules/rls_class_mapping.yaml
+    allergy-rules: classpath:rules/allergy_rules.yaml

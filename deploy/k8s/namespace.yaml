@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sovmestim
+  labels:
+    app.kubernetes.io/part-of: sovmestim
+    # Pod Security Admission: the workloads are non-root, drop all capabilities and use the
+    # default seccomp profile. PostgreSQL runs as its own image user (uid 70).
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

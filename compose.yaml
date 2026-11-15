@@ -1,35 +1,102 @@
 name: sovmestim
 
+# One PostgreSQL container per service: physical database isolation, not just a naming convention.
+# Every service connects only to its own database; cross-service ids are validated over gRPC.
+
+x-db-env: &db-env
+  POSTGRES_USER: sovmestim
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+
+x-db-healthcheck: &db-healthcheck
+  interval: 5s
+  timeout: 5s
+  retries: 20
+
 services:
-  db:
+  db-identity:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: sovmestim
-      POSTGRES_USER: sovmestim
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+      <<: *db-env
+      POSTGRES_DB: sovmestim_identity
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db-identity-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sovmestim -d sovmestim"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
+      <<: *db-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U sovmestim -d sovmestim_identity"]
 
-  api:
+  db-patient:
+    image: postgres:16-alpine
+    environment:
+      <<: *db-env
+      POSTGRES_DB: sovmestim_patient
+    volumes:
+      - db-patient-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *db-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U sovmestim -d sovmestim_patient"]
+
+  db-catalog:
+    image: postgres:16-alpine
+    environment:
+      <<: *db-env
+      POSTGRES_DB: sovmestim_catalog
+    volumes:
+      - db-catalog-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *db-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U sovmestim -d sovmestim_catalog"]
+
+  db-intake:
+    image: postgres:16-alpine
+    environment:
+      <<: *db-env
+      POSTGRES_DB: sovmestim_intake
+    volumes:
+      - db-intake-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *db-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U sovmestim -d sovmestim_intake"]
+
+  db-advice:
+    image: postgres:16-alpine
+    environment:
+      <<: *db-env
+      POSTGRES_DB: sovmestim_advice
+    volumes:
+      - db-advice-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *db-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U sovmestim -d sovmestim_advice"]
+
+  db-gateway:
+    image: postgres:16-alpine
+    environment:
+      <<: *db-env
+      POSTGRES_DB: sovmestim_gateway
+    volumes:
+      - db-gateway-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *db-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U sovmestim -d sovmestim_gateway"]
+
+  identity:
     build:
       context: .
-    image: sovmestim-backend:local
+      args:
+        MODULE: services/identity
+        HEALTH_PORT: 8081
+    image: sovmestim-identity:local
     depends_on:
-      db:
+      db-identity:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/sovmestim
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-identity:5432/sovmestim_identity
       SPRING_DATASOURCE_USERNAME: sovmestim
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+      SERVER_PORT: 8081
+      SOVMESTIM_GRPC_PORT: 9091
       SOVMESTIM_JWT_SECRET: ${SOVMESTIM_JWT_SECRET:-dev-only-secret-change-me-0123456789abcdef}
-      # Demo mode: recorded RLS responses and a seeded catalog, zero paid calls.
-      SOVMESTIM_RLS_MODE: demo
-      SOVMESTIM_DEMO_SEED: "true"
+      SOVMESTIM_JWT_ISSUER: ${SOVMESTIM_JWT_ISSUER:-sovmestim}
       SOVMESTIM_OTP_CHANNEL: ${SOVMESTIM_OTP_CHANNEL:-log}
       SOVMESTIM_OTP_DEBUG: ${SOVMESTIM_OTP_DEBUG:-true}
       SOVMESTIM_OTP_FROM: ${SOVMESTIM_OTP_FROM:-}
@@ -37,8 +104,139 @@ services:
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+
+  patient:
+    build:
+      context: .
+      args:
+        MODULE: services/patient
+        HEALTH_PORT: 8082
+    image: sovmestim-patient:local
+    depends_on:
+      db-patient:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-patient:5432/sovmestim_patient
+      SPRING_DATASOURCE_USERNAME: sovmestim
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+      SERVER_PORT: 8082
+      SOVMESTIM_GRPC_PORT: 9092
+
+  catalog:
+    build:
+      context: .
+      args:
+        MODULE: services/catalog
+        HEALTH_PORT: 8083
+    image: sovmestim-catalog:local
+    depends_on:
+      db-catalog:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-catalog:5432/sovmestim_catalog
+      SPRING_DATASOURCE_USERNAME: sovmestim
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+      SERVER_PORT: 8083
+      SOVMESTIM_GRPC_PORT: 9093
+      SOVMESTIM_DEMO_SEED: ${SOVMESTIM_DEMO_SEED:-true}
+
+  intake:
+    build:
+      context: .
+      args:
+        MODULE: services/intake
+        HEALTH_PORT: 8084
+    image: sovmestim-intake:local
+    depends_on:
+      db-intake:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-intake:5432/sovmestim_intake
+      SPRING_DATASOURCE_USERNAME: sovmestim
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+      SERVER_PORT: 8084
+      SOVMESTIM_GRPC_PORT: 9094
+      SOVMESTIM_CATALOG_GRPC_HOST: catalog
+      SOVMESTIM_CATALOG_GRPC_PORT: 9093
+
+  advice:
+    build:
+      context: .
+      args:
+        MODULE: services/advice
+        HEALTH_PORT: 8085
+    image: sovmestim-advice:local
+    depends_on:
+      db-advice:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+      patient:
+        condition: service_healthy
+      intake:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-advice:5432/sovmestim_advice
+      SPRING_DATASOURCE_USERNAME: sovmestim
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+      SERVER_PORT: 8085
+      SOVMESTIM_GRPC_PORT: 9095
+      SOVMESTIM_CATALOG_GRPC_HOST: catalog
+      SOVMESTIM_CATALOG_GRPC_PORT: 9093
+      SOVMESTIM_PATIENT_GRPC_HOST: patient
+      SOVMESTIM_PATIENT_GRPC_PORT: 9092
+      SOVMESTIM_INTAKE_GRPC_HOST: intake
+      SOVMESTIM_INTAKE_GRPC_PORT: 9094
+      SOVMESTIM_RLS_MODE: ${SOVMESTIM_RLS_MODE:-demo}
+      SOVMESTIM_RLS_BASE_URL: ${SOVMESTIM_RLS_BASE_URL:-}
+      SOVMESTIM_RLS_API_KEY: ${SOVMESTIM_RLS_API_KEY:-}
+
+  gateway:
+    build:
+      context: .
+      args:
+        MODULE: services/gateway
+        HEALTH_PORT: 8080
+    image: sovmestim-gateway:local
+    depends_on:
+      db-gateway:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+      patient:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+      intake:
+        condition: service_healthy
+      advice:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-gateway:5432/sovmestim_gateway
+      SPRING_DATASOURCE_USERNAME: sovmestim
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sovmestim}
+      SERVER_PORT: 8080
+      SOVMESTIM_JWT_SECRET: ${SOVMESTIM_JWT_SECRET:-dev-only-secret-change-me-0123456789abcdef}
+      SOVMESTIM_JWT_ISSUER: ${SOVMESTIM_JWT_ISSUER:-sovmestim}
+      SOVMESTIM_IDENTITY_GRPC_HOST: identity
+      SOVMESTIM_IDENTITY_GRPC_PORT: 9091
+      SOVMESTIM_PATIENT_GRPC_HOST: patient
+      SOVMESTIM_PATIENT_GRPC_PORT: 9092
+      SOVMESTIM_CATALOG_GRPC_HOST: catalog
+      SOVMESTIM_CATALOG_GRPC_PORT: 9093
+      SOVMESTIM_INTAKE_GRPC_HOST: intake
+      SOVMESTIM_INTAKE_GRPC_PORT: 9094
+      SOVMESTIM_ADVICE_GRPC_HOST: advice
+      SOVMESTIM_ADVICE_GRPC_PORT: 9095
     ports:
       - "8080:8080"
 
 volumes:
-  db-data:
+  db-identity-data:
+  db-patient-data:
+  db-catalog-data:
+  db-intake-data:
+  db-advice-data:
+  db-gateway-data:

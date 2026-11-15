@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package sovmestim.patient.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "ru.sovmestim.proto.patient.v1";
+option java_multiple_files = true;
+option java_outer_classname = "PatientProto";
+
+// Patient profile: allergies and chronic conditions. The service owns last-write-wins conflict
+// resolution, so the gateway only forwards the client change and reports the returned status.
+service PatientService {
+  // Lists the active allergies of a patient.
+  rpc GetAllergies(GetAllergiesRequest) returns (AllergyList);
+
+  // Lists the active chronic conditions of a patient.
+  rpc GetConditions(GetConditionsRequest) returns (ConditionList);
+
+  // Creates or updates an allergy.
+  rpc UpsertAllergy(UpsertAllergyRequest) returns (ChangeResult);
+
+  // Soft-deletes an allergy (a sync tombstone).
+  rpc DeleteAllergy(DeleteAllergyRequest) returns (ChangeResult);
+
+  // Creates or updates a chronic condition.
+  rpc UpsertCondition(UpsertConditionRequest) returns (ChangeResult);
+
+  // Soft-deletes a chronic condition (a sync tombstone).
+  rpc DeleteCondition(DeleteConditionRequest) returns (ChangeResult);
+
+  // Returns profile changes after a cursor, including tombstones.
+  rpc ChangesSince(ChangesSinceRequest) returns (PatientChanges);
+}
+
+message Allergy {
+  string id = 1;
+  string name = 2;
+  string code = 3;
+  string severity = 4;
+  string symptoms = 5;
+  string reason = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  bool deleted = 8;
+}
+
+message Condition {
+  string id = 1;
+  string name = 2;
+  string mkb_code = 3;
+  string status = 4;
+  string diagnosis_date = 5;
+  string note = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  bool deleted = 8;
+}
+
+message AllergyList {
+  repeated Allergy allergies = 1;
+}
+
+message ConditionList {
+  repeated Condition conditions = 1;
+}
+
+message GetAllergiesRequest {
+  string user_id = 1;
+}
+
+message GetConditionsRequest {
+  string user_id = 1;
+}
+
+message UpsertAllergyRequest {
+  string user_id = 1;
+  string id = 2;
+  google.protobuf.Timestamp client_updated_at = 3;
+  string name = 4;
+  string severity = 5;
+  string symptoms = 6;
+  string reason = 7;
+}
+
+message DeleteAllergyRequest {
+  string user_id = 1;
+  string id = 2;
+  google.protobuf.Timestamp client_updated_at = 3;
+}
+
+message UpsertConditionRequest {
+  string user_id = 1;
+  string id = 2;
+  google.protobuf.Timestamp client_updated_at = 3;
+  string name = 4;
+  string mkb_code = 5;
+  string status = 6;
+  string diagnosis_date = 7;
+  string note = 8;
+}
+
+message DeleteConditionRequest {
+  string user_id = 1;
+  string id = 2;
+  google.protobuf.Timestamp client_updated_at = 3;
+}
+
+message ChangesSinceRequest {
+  string user_id = 1;
+  google.protobuf.Timestamp cursor = 2;
+}
+
+message PatientChanges {
+  repeated Allergy allergies = 1;
+  repeated Condition conditions = 2;
+  google.protobuf.Timestamp next_cursor = 3;
+}
+
+message ChangeResult {
+  string id = 1;
+  string status = 2;
+  string message = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}

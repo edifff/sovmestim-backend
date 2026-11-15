@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package sovmestim.intake.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "ru.sovmestim.proto.intake.v1";
+option java_multiple_files = true;
+option java_outer_classname = "IntakeProto";
+
+// Current medication courses. The service stores a denormalized medicine name/brand snapshot so
+// reads never depend on a live catalog call; unresolved names stay as local drafts.
+service IntakeService {
+  // Lists the active medication courses of a patient.
+  rpc ListActiveMedications(ListMedicationsRequest) returns (MedicationList);
+
+  // Adds a medication course, resolving a known medicine through the catalog service.
+  rpc AddMedication(AddMedicationRequest) returns (Medication);
+
+  // Soft-deletes a medication course.
+  rpc DeleteMedication(DeleteMedicationRequest) returns (ChangeResult);
+
+  // Creates or updates a medication course from a sync push.
+  rpc UpsertMedication(UpsertMedicationRequest) returns (UpsertResult);
+
+  // Returns medication changes after a cursor, including tombstones.
+  rpc ChangesSince(ChangesSinceRequest) returns (MedicationChanges);
+
+  // Returns the ids of the active courses; used for advice rechecks.
+  rpc ActiveCourseIds(ActiveCourseIdsRequest) returns (UuidList);
+
+  // Maps course ids to catalog medicine ids, skipping drafts without a resolved medicine.
+  rpc MedicineIdsForCourses(MedicineIdsForCoursesRequest) returns (MedicineIds);
+
+  // Lists the substance-level intake rules of the patient, used to build the advice snapshot.
+  rpc ListActiveSubstances(ListMedicationsRequest) returns (ActiveSubstances);
+}
+
+message Medication {
+  string id = 1;
+  string medicine_id = 2;
+  string medicine_name = 3;
+  string brand = 4;
+  string dosage = 5;
+  string frequency = 6;
+  string start_date = 7;
+  string status = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  bool deleted = 10;
+}
+
+message MedicationList {
+  repeated Medication medications = 1;
+}
+
+message AddMedicationRequest {
+  string user_id = 1;
+  string medicine_id = 2;
+  string drug_name = 3;
+  string dosage = 4;
+  string frequency = 5;
+  string start_date = 6;
+}
+
+message ListMedicationsRequest {
+  string user_id = 1;
+}
+
+message DeleteMedicationRequest {
+  string user_id = 1;
+  string id = 2;
+  google.protobuf.Timestamp client_updated_at = 3;
+}
+
+message UpsertMedicationRequest {
+  string user_id = 1;
+  string id = 2;
+  google.protobuf.Timestamp client_updated_at = 3;
+  string medicine_id = 4;
+  string drug_name = 5;
+  string dosage = 6;
+  string frequency = 7;
+  string start_date = 8;
+  string status = 9;
+}
+
+message ChangeResult {
+  string id = 1;
+  string status = 2;
+  string message = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message UpsertResult {
+  ChangeResult result = 1;
+  string course_id_for_check = 2;
+}
+
+message ActiveCourseIdsRequest {
+  string user_id = 1;
+}
+
+message UuidList {
+  repeated string ids = 1;
+}
+
+message MedicineIdsForCoursesRequest {
+  string user_id = 1;
+  repeated string course_ids = 2;
+}
+
+message MedicineIds {
+  map<string, string> by_course = 1;
+}
+
+message ActiveSubstances {
+  repeated TakenSubstanceRef refs = 1;
+}
+
+message TakenSubstanceRef {
+  string medicine_id = 1;
+  string active_substance_id = 2;
+}
+
+message ChangesSinceRequest {
+  string user_id = 1;
+  google.protobuf.Timestamp cursor = 2;
+}
+
+message MedicationChanges {
+  repeated Medication medications = 1;
+  google.protobuf.Timestamp next_cursor = 2;
+}

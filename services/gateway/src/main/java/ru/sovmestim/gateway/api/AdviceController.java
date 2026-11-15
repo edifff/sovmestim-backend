@@ -1,0 +1,53 @@
+package ru.sovmestim.gateway.api;
+
+import java.util.List;
+
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import lombok.RequiredArgsConstructor;
+
+import jakarta.validation.Valid;
+import ru.sovmestim.gateway.client.AdviceClient;
+import ru.sovmestim.gateway.dto.AdviceCheckRequest;
+import ru.sovmestim.gateway.dto.AdviceCheckResponse;
+import ru.sovmestim.gateway.security.CurrentUser;
+
+/**
+ * Online compatibility check. Reminders and offline screens never depend on this endpoint.
+ */
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/v1/advice")
+public class AdviceController {
+
+    private final AdviceClient adviceClient;
+
+    /**
+     * Checks one drug against the current patient state.
+     *
+     * @param jwt authenticated caller token
+     * @param request drug identification for the check
+     * @return stored advice response
+     */
+    @PostMapping("/check")
+    public AdviceCheckResponse check(
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AdviceCheckRequest request) {
+        return adviceClient.check(CurrentUser.id(jwt), request);
+    }
+
+    /**
+     * Recompute advice for all active medications, e.g. after a rules or catalog update.
+     *
+     * @param jwt authenticated caller token
+     * @return one stored response per active course
+     */
+    @PostMapping("/recheck")
+    public List<AdviceCheckResponse> recheck(@AuthenticationPrincipal Jwt jwt) {
+        return adviceClient.recheckAll(CurrentUser.id(jwt));
+    }
+}

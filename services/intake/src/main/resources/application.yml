@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: sovmestim-intake
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5435/sovmestim_intake}
+    username: ${SPRING_DATASOURCE_USERNAME:sovmestim}
+    password: ${SPRING_DATASOURCE_PASSWORD:sovmestim}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        default_batch_fetch_size: 50
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      # Kubernetes probes: liveness ignores the database, readiness requires it.
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+
+sovmestim:
+  grpc:
+    port: ${SOVMESTIM_GRPC_PORT:9094}
+    clients:
+      catalog:
+        host: ${SOVMESTIM_CATALOG_GRPC_HOST:localhost}
+        port: ${SOVMESTIM_CATALOG_GRPC_PORT:9093}

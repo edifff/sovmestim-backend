@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package sovmestim.catalog.v1;
+
+option java_package = "ru.sovmestim.proto.catalog.v1";
+option java_multiple_files = true;
+option java_outer_classname = "CatalogProto";
+
+// Read-only drug catalog. The catalog service owns ATC codes, substances and medicines; every
+// other service reaches them through this contract only.
+service CatalogService {
+  // Searches active substances by name.
+  rpc SearchSubstances(SearchSubstancesRequest) returns (SubstanceList);
+
+  // Searches medicines by name or trade mark name.
+  rpc SearchMedicines(SearchMedicinesRequest) returns (MedicineList);
+
+  // Loads one medicine with all its substances.
+  rpc GetMedicine(GetMedicineRequest) returns (Medicine);
+
+  // Resolves an entered drug name to a medicine or a single active substance.
+  rpc ResolveDrug(ResolveDrugRequest) returns (ResolveDrugResponse);
+
+  // Loads substance references for the given ids.
+  rpc GetSubstancesByIds(GetSubstancesByIdsRequest) returns (SubstanceList);
+
+  // Loads the substances of one medicine.
+  rpc GetSubstancesForMedicine(GetSubstancesForMedicineRequest) returns (SubstanceList);
+
+  // Loads the substances of several medicines in one round trip.
+  rpc GetSubstancesForMedicines(GetSubstancesForMedicinesRequest) returns (SubstanceList);
+}
+
+message Substance {
+  string id = 1;
+  string name = 2;
+  string atc_code = 3;
+  string atc_name = 4;
+  string description = 5;
+  string phg = 6;
+  string dosage = 7;
+}
+
+message SubstanceList {
+  repeated Substance substances = 1;
+}
+
+message Medicine {
+  string id = 1;
+  string name = 2;
+  string brand = 3;
+  string form_release = 4;
+  repeated Substance substances = 5;
+}
+
+message MedicineList {
+  repeated Medicine medicines = 1;
+}
+
+message SearchSubstancesRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+
+message SearchMedicinesRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+
+message GetMedicineRequest {
+  string id = 1;
+}
+
+message ResolveDrugRequest {
+  string name = 1;
+}
+
+message ResolveDrugResponse {
+  bool found = 1;
+  string medicine_id = 2;
+  string name = 3;
+  repeated Substance substances = 4;
+}
+
+message GetSubstancesByIdsRequest {
+  repeated string ids = 1;
+}
+
+message GetSubstancesForMedicineRequest {
+  string medicine_id = 1;
+}
+
+message GetSubstancesForMedicinesRequest {
+  repeated string medicine_ids = 1;
+}

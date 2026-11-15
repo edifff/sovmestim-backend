@@ -1,0 +1,101 @@
+# Non-secret configuration per service. Service discovery uses the Kubernetes DNS names of the
+# ClusterIP Services defined in apps/*.yaml (for example catalog:9093).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: identity-config
+  labels:
+    app: identity
+    app.kubernetes.io/part-of: sovmestim
+data:
+  SERVER_PORT: "8081"
+  SOVMESTIM_GRPC_PORT: "9091"
+  SPRING_DATASOURCE_URL: jdbc:postgresql://db-identity:5432/sovmestim_identity
+  SOVMESTIM_JWT_ISSUER: sovmestim
+  SOVMESTIM_OTP_CHANNEL: log
+  SOVMESTIM_OTP_DEBUG: "true"
+  SOVMESTIM_OTP_FROM: ""
+  SPRING_MAIL_HOST: ""
+  SPRING_MAIL_PORT: "587"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patient-config
+  labels:
+    app: patient
+    app.kubernetes.io/part-of: sovmestim
+data:
+  SERVER_PORT: "8082"
+  SOVMESTIM_GRPC_PORT: "9092"
+  SPRING_DATASOURCE_URL: jdbc:postgresql://db-patient:5432/sovmestim_patient
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog-config
+  labels:
+    app: catalog
+    app.kubernetes.io/part-of: sovmestim
+data:
+  SERVER_PORT: "8083"
+  SOVMESTIM_GRPC_PORT: "9093"
+  SPRING_DATASOURCE_URL: jdbc:postgresql://db-catalog:5432/sovmestim_catalog
+  SOVMESTIM_DEMO_SEED: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: intake-config
+  labels:
+    app: intake
+    app.kubernetes.io/part-of: sovmestim
+data:
+  SERVER_PORT: "8084"
+  SOVMESTIM_GRPC_PORT: "9094"
+  SPRING_DATASOURCE_URL: jdbc:postgresql://db-intake:5432/sovmestim_intake
+  SOVMESTIM_CATALOG_GRPC_HOST: catalog
+  SOVMESTIM_CATALOG_GRPC_PORT: "9093"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: advice-config
+  labels:
+    app: advice
+    app.kubernetes.io/part-of: sovmestim
+data:
+  SERVER_PORT: "8085"
+  SOVMESTIM_GRPC_PORT: "9095"
+  SPRING_DATASOURCE_URL: jdbc:postgresql://db-advice:5432/sovmestim_advice
+  SOVMESTIM_CATALOG_GRPC_HOST: catalog
+  SOVMESTIM_CATALOG_GRPC_PORT: "9093"
+  SOVMESTIM_PATIENT_GRPC_HOST: patient
+  SOVMESTIM_PATIENT_GRPC_PORT: "9092"
+  SOVMESTIM_INTAKE_GRPC_HOST: intake
+  SOVMESTIM_INTAKE_GRPC_PORT: "9094"
+  # demo -> recorded interactions; http -> licensed RLS endpoint (needs the API key secret).
+  SOVMESTIM_RLS_MODE: demo
+  SOVMESTIM_RLS_BASE_URL: ""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  labels:
+    app: gateway
+    app.kubernetes.io/part-of: sovmestim
+data:
+  SERVER_PORT: "8080"
+  SPRING_DATASOURCE_URL: jdbc:postgresql://db-gateway:5432/sovmestim_gateway
+  SOVMESTIM_JWT_ISSUER: sovmestim
+  SOVMESTIM_IDENTITY_GRPC_HOST: identity
+  SOVMESTIM_IDENTITY_GRPC_PORT: "9091"
+  SOVMESTIM_PATIENT_GRPC_HOST: patient
+  SOVMESTIM_PATIENT_GRPC_PORT: "9092"
+  SOVMESTIM_CATALOG_GRPC_HOST: catalog
+  SOVMESTIM_CATALOG_GRPC_PORT: "9093"
+  SOVMESTIM_INTAKE_GRPC_HOST: intake
+  SOVMESTIM_INTAKE_GRPC_PORT: "9094"
+  SOVMESTIM_ADVICE_GRPC_HOST: advice
+  SOVMESTIM_ADVICE_GRPC_PORT: "9095"

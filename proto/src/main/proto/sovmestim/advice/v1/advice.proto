@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package sovmestim.advice.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "ru.sovmestim.proto.advice.v1";
+option java_multiple_files = true;
+option java_outer_classname = "AdviceProto";
+
+// Compatibility checks. The advice service assembles the patient snapshot itself by calling the
+// patient, intake and catalog services, runs the engine and stores an audit record.
+service AdviceService {
+  // Checks one drug against the current patient state.
+  rpc Check(CheckRequest) returns (AdviceResponse);
+
+  // Recomputes advice for the given courses.
+  rpc RecheckCourses(RecheckCoursesRequest) returns (AdviceResponseList);
+
+  // Recomputes advice for every active course of the patient.
+  rpc RecheckAll(RecheckAllRequest) returns (AdviceResponseList);
+
+  // Returns stored advice after a cursor; used by sync pull.
+  rpc AdviceSince(AdviceSinceRequest) returns (AdviceChanges);
+}
+
+message CheckRequest {
+  string user_id = 1;
+  string drug_name = 2;
+  string medicine_id = 3;
+  repeated string substance_ids = 4;
+}
+
+message AdviceResponse {
+  string advice_id = 1;
+  AdviceResult result = 2;
+}
+
+message AdviceResponseList {
+  repeated AdviceResponse responses = 1;
+}
+
+message RecheckCoursesRequest {
+  string user_id = 1;
+  repeated string course_ids = 2;
+}
+
+message RecheckAllRequest {
+  string user_id = 1;
+}
+
+message AdviceSinceRequest {
+  string user_id = 1;
+  google.protobuf.Timestamp cursor = 2;
+}
+
+message AdviceChanges {
+  repeated AdviceDelivery deliveries = 1;
+  google.protobuf.Timestamp next_cursor = 2;
+}
+
+message AdviceDelivery {
+  string advice_id = 1;
+  string drug_name = 2;
+  google.protobuf.Timestamp created_at = 3;
+  AdviceResult result = 4;
+}
+
+message AdviceResult {
+  string status = 1;
+  string level = 2;
+  repeated AdviceFinding findings = 3;
+  int32 checked_substances = 4;
+  string rules_version = 5;
+  string mapping_version = 6;
+  string catalog_version = 7;
+  google.protobuf.Timestamp checked_at = 8;
+  repeated string notes = 9;
+}
+
+message AdviceFinding {
+  string kind = 1;
+  string level = 2;
+  string title = 3;
+  string text = 4;
+  repeated string substances = 5;
+  repeated AdviceSource sources = 6;
+}
+
+message AdviceSource {
+  string kind = 1;
+  string name = 2;
+  string date = 3;
+  string note = 4;
+}

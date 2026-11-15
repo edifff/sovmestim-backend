@@ -1,74 +1,76 @@
 # Sovmestim — backend
 
-Server-side application for the Sovmestim medication assistant (roadmap phases 1–2, server vertical
-slices). The decision logic is server-only: the mobile client holds no rules and no full drug
-directory (ADR-002).
+Server-side application for the Sovmestim medication assistant, built as independent Spring Boot
+services that talk to each other over **gRPC**. The public REST contract (`v1`) is unchanged and is
+served only by the gateway; the mobile client generates its KMP client from the same
+`openapi.yaml`.
 
-- Java **25**, Spring Boot **4.0.5**, PostgreSQL (Flyway-managed schema), Testcontainers.
-- Built on the provided database script (`deepseek_sql_20261003_cca4c7.sql`), used verbatim as the
-  base migration.
-- RLS (the licensed Russian drug-registry API) sits behind the `InteractionSource` interface; a
-  recorded **demo mode** lets the whole check pipeline run with zero paid calls.
+- Java **25**, Spring Boot **4.0.5**, PostgreSQL 16 (Flyway per service), Testcontainers.
+- gRPC **1.84.1** / Protocol Buffers **4.36.2** (`grpc-java`, explicit deadlines, no REST between
+  services).
+- One Maven reactor. **Every dependency and plugin version is declared in `<properties>` in the
+  root `pom.xml`** — child poms contain no versions.
 
-Detailed design: `sovmestim-architecture.en.md`. Plan: `sovmestim-roadmap.en.md`.
+## Architecture
 
-## Requirements
+```
+mobile client ──HTTP/JSON /v1──> gateway :8080   (JWT edge, OpenAPI, sync orchestration)
+                                    │ gRPC
+            ┌───────────────┬───────┼──────────────┬──────────────┐
+            ▼               ▼       ▼              ▼              ▼
+        identity        patient   catalog        intake         advice
+        :9091           :9092     :9093          :9094          :9095
+            │               │       │              │              │
+     sovmestim_       sovmestim_  sovmestim_  sovmestim_     sovmestim_
+      identity         patient    catalog      intake         advice
+            │               │       │              │              │
+        db-identity    db-patient db-catalog   db-intake      db-advice     (one container each)
+```
 
-- JDK 25 (`java -version` → 25.x). If it is not the default, point `JAVA_HOME` at it, e.g.:
+| Module | Responsibility | HTTP | gRPC |
+| --- | --- | --- | --- |
+| `services/gateway` | REST `/v1`, JWT validation, OpenAPI, sync push/pull | 8080 | client only |
+| `services/identity` | users, one-time codes, access/refresh tokens | 8081 | 9091 |
+| `services/patient` | allergies, chronic conditions, profile deltas | 8082 | 9092 |
+| `services/catalog` | ATC, substances, medicines, search/resolve | 8083 | 9093 |
+| `services/intake` | medication courses, intake rules | 8084 | 9094 |
+| `services/advice` | interaction sources, engine, advice audit | 8085 | 9095 |
+| `proto` | protobuf contracts shared by every service | — | — |
+| `common` | error model, entity base, name normalization, gRPC plumbing | — | — |
 
-  ```bash
-  export JAVA_HOME=/home/edifff/.jdks/jbr-25.0.2
-  ```
+Rules enforced by the split:
 
-- Docker (used by the integration tests to start PostgreSQL 16 via Testcontainers).
-- Maven wrapper is included; do not use a system Maven.
+- A service reads **only its own database**. Cross-service ids are plain UUID columns validated
+  over gRPC; there are no cross-database foreign keys.
+- Only the gateway parses JWTs. Leaf services trust the gateway and receive the user id in the
+  request message.
+- Every outbound call has a deadline; every request carries `x-correlation-id` through gRPC
+  metadata and the log MDC.
+- `sync` is orchestration, so it lives in the gateway: it fans out to patient, intake and advice.
 
 ## Build and test
 
+Requirements: JDK 25 and Docker (Testcontainers starts PostgreSQL for integration tests).
+
 ```bash
-export JAVA_HOME=/home/edifff/.jdks/jbr-25.0.2
+export JAVA_HOME=/path/to/jdk-25
 ./mvnw clean verify
 ```
 
-- Unit tests (`*Test`) run with Surefire: name normalization, class-mapping loader, allergy rules,
-  demo interaction source, advice engine.
-- Integration tests (`*IT`) run with Failsafe against a real PostgreSQL container: Flyway
-  migrations + demo seed, passwordless auth, catalog search/resolve, advice check end-to-end, and
-  profile sync push/pull. Per `AGENTS.md`, database behavior is never mocked.
+- Unit tests (`*Test`, Surefire): advice engine, rule loading, demo source, normalization, JWT,
+  gateway error mapping, OpenAPI contract parsing.
+- Integration tests (`*IT`, Failsafe) run each service against a **real PostgreSQL container**:
+  Flyway migrations, demo catalog seed, sync upsert/conflict/tombstone, login and token rotation,
+  gateway OpenAPI mapping. Database behaviour is never mocked.
 
-Run a single test:
-
-```bash
-./mvnw -Dtest=AdviceEngineTest test
-./mvnw -Dit.test=AdviceIT verify
-```
-
-## Running the application
-
-The app needs PostgreSQL with the provided schema. Flyway applies the migrations on startup
-(`V1__init_schema.sql` from the supplied script, `V2__application_tables.sql` adds login and audit
-tables). Configuration is environment-driven (`src/main/resources/application.yml`):
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/sovmestim` | database |
-| `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | `sovmestim` | database credentials |
-| `SOVMESTIM_JWT_SECRET` | dev value | HS256 secret, ≥ 32 bytes |
-| `SOVMESTIM_OTP_DEBUG` | `true` | return the login code in the response (dev only) |
-| `SOVMESTIM_RLS_MODE` | `demo` | `demo` = recorded responses, `http` = licensed RLS API |
-| `SOVMESTIM_RLS_BASE_URL` / `SOVMESTIM_RLS_API_KEY` | — | RLS credentials for `http` mode |
-| `SOVMESTIM_DEMO_SEED` | `true` | seed the recorded catalog when the tables are empty |
+Run one module:
 
 ```bash
-./mvnw spring-boot:run
-# or
-java -jar target/sovmestim-backend-0.1.0-SNAPSHOT.jar
+./mvnw -pl services/catalog -am verify
+./mvnw -pl services/advice -Dtest=AdviceEngineTest test
 ```
 
-## Run locally with Docker Compose
-
-The fastest way to run the whole stack (API + PostgreSQL). Demo mode is on, so the recorded catalog
-and interactions are seeded and login codes are returned in the response.
+## Run the whole stack
 
 ```bash
 docker compose up -d --build
@@ -77,106 +79,110 @@ docker compose up -d --build
 # Health:     http://localhost:8080/actuator/health
 # Contract:   http://localhost:8080/openapi.yaml
 
-docker compose logs -f api
-docker compose down        # stop, keep the database volume
-docker compose down -v     # stop and drop the database volume
+docker compose logs -f gateway
+docker compose down        # stop, keep the databases
+docker compose down -v     # stop and drop all databases
 ```
 
 Smoke test:
 
 ```bash
 curl -s localhost:8080/actuator/health
-# request a code; in debug mode devCode is returned in the body
 curl -s -X POST localhost:8080/v1/auth/request-code \
   -H 'Content-Type: application/json' -d '{"email":"demo@example.com"}'
+# demo mode returns devCode; then POST /v1/auth/verify with that code
 ```
 
+The compose file starts **six PostgreSQL containers**, one per service, plus the six services.
+Only the gateway publishes a port; everything else is reachable only inside the compose network.
 Copy `.env.example` to `.env` to override `POSTGRES_PASSWORD` and `SOVMESTIM_JWT_SECRET`.
 
-## API
+## Run on Kubernetes
 
-All endpoints are prefixed with `/v1`. Catalog reads are public; everything else needs
-`Authorization: Bearer <accessToken>`.
+Kustomize manifests live in `deploy/k8s`: six Deployments, six PostgreSQL StatefulSets, startup /
+readiness / liveness probes, resource requests and limits, non-root containers with a read-only
+root filesystem, NetworkPolicies and an optional Ingress.
 
-- `POST /auth/request-code`, `POST /auth/verify`, `POST /auth/refresh` — passwordless login
-  (`OtpSender` interface, e-mail/Telegram/SMS later).
-- `GET /catalog/substances?query=`, `GET /catalog/medicines?query=`, `GET /catalog/medicines/{id}`,
-  `GET /catalog/resolve?name=` — normalization + autocomplete + drug→substance resolution.
-- `GET /profile`, `GET|POST|PUT|DELETE /profile/allergies`, `GET|POST|DELETE /profile/conditions`.
-- `GET|POST|DELETE /medications` — current drugs (courses) feeding the check.
-- `POST /advice/check` — online compatibility check (`drugName`, `medicineId` or `substanceIds`).
-- `POST /advice/recheck` — recompute advice for all active medications (rules/catalog update trigger).
-- `POST /sync/push`, `GET /sync/pull?cursor=` — profile **and** medication sync; push is idempotent
-  and runs advice checks automatically, whose results arrive as `advice` on the next pull.
+```bash
+./deploy/k8s/build-images.sh 0.2.0
+kind create cluster --name sovmestim
+for s in identity patient catalog intake advice gateway; do
+  kind load docker-image "sovmestim-${s}:0.2.0" --name sovmestim
+done
 
-## Sync and the server-side advice loop
+kubectl apply -k deploy/k8s
+kubectl -n sovmestim get pods -w
+kubectl -n sovmestim port-forward svc/gateway 8080:8080
+```
 
-`POST /v1/sync/push` accepts allergies, conditions and current medications, is idempotent by
-`idempotencyKey` (a retry returns the stored response), and applies last-write-wins per record on
-server time (older client changes come back as `CONFLICT`). After applying a batch the server
-auto-runs checks for new/changed medications — or for all active medications when the profile
-changed — and stores `advice_record` rows.
+See `deploy/k8s/README.md` for secrets, storage, scaling, rollback and manifest validation.
 
-`GET /v1/sync/pull?cursor=` returns everything changed since the cursor: profile, medications,
-tombstones, and the new advice delivery (danger level, findings, sources, rule/catalog versions),
-plus the next cursor. `POST /v1/advice/recheck` recomputes advice for all active medications after a
-rules or catalog update.
+## gRPC contracts
+
+Contracts live in `proto/src/main/proto/sovmestim/<service>/v1/*.proto` and are compiled by
+`protobuf-maven-plugin` into every consumer. Conventions:
+
+- package `sovmestim.<service>.v1`, `java_package ru.sovmestim.proto.<service>.v1`;
+- UUIDs are strings, instants are `google.protobuf.Timestamp`, dates are ISO-8601 strings;
+- errors use `Status` codes only (`INVALID_ARGUMENT`, `NOT_FOUND`, `ABORTED`, `UNAVAILABLE`);
+  `GrpcExceptionInterceptor` maps the shared domain exceptions to them;
+- breaking changes require a new package version (`v2`), never field renumbering.
+
+`common` starts the server for every `BindableService` bean when `sovmestim.grpc.port` is set, and
+provides the channel factory used by the clients.
+
+## Data
+
+Each service owns one database and its own Flyway history:
+
+| Service | Database | Tables |
+| --- | --- | --- |
+| identity | `sovmestim_identity` | `app_user`, `gender`, `otp_code`, `refresh_token` |
+| patient | `sovmestim_patient` | `allergy*`, `chronic_disease*`, `user_disease`, `mkb`, `severity_reaction`, `status` |
+| catalog | `sovmestim_catalog` | `atc`, `active_substance`, `trade_mark`, `form_release`, `unit_measurement`, `medicine`, `substance_in_medicine` |
+| intake | `sovmestim_intake` | `intake*`, `taken_substance`, `course_medicine`, `notification*`, `alarm`, `status` |
+| advice | `sovmestim_advice` | `advice_record`, `interaction_substances`, `danger_level` |
+| gateway | `sovmestim_gateway` | `sync_request` |
+
+Lookup rows (`status`, `intake_type`, `severity_reaction`) are duplicated in the service that reads
+them instead of being shared. `course_medicine` stores a medicine name/brand snapshot so reads never
+depend on a live catalog call. Legacy tables that no code used (appointments, doctors, weight
+tracking, ...) were intentionally not migrated.
+
+## Sync
+
+`POST /v1/sync/push` is idempotent by `idempotencyKey` (the gateway stores the response in
+`sync_request`). Each change is applied by its owning service with last-write-wins on server time;
+an older client change comes back as `CONFLICT`. After applying a batch the gateway rechecks advice
+for the affected courses — or for all active courses when the profile changed.
+
+`GET /v1/sync/pull?cursor=` merges the patient, intake and advice deltas and returns tombstones plus
+the newest cursor.
+
+## Adding a dependency or a service
+
+1. Add/change the version **only** in the root `pom.xml` `<properties>` block (and in
+   `<dependencyManagement>` if it is a new library).
+2. Child modules declare the dependency without a `<version>`.
+3. For a new service: add the module to the reactor, a pom with the shared parent, a
+   `<service>/v1` proto, a Flyway `V1__..._schema.sql`, its own `application.yml`, a compose
+   service with a dedicated database, a Kubernetes manifest in `deploy/k8s/apps` plus its database
+   in `deploy/k8s/postgres.yaml` and NetworkPolicy rules, and an integration test against
+   Testcontainers.
 
 ## API contract (OpenAPI)
 
-The contract is authored first and lives at `src/main/resources/static/openapi.yaml`; it is the
-source of truth for the v1 API and is served at `/openapi.yaml`. **Swagger UI** is served at
-`/swagger-ui.html` and loads that same file (the generated `/v3/api-docs` is not used by the UI).
-Three tests keep the implementation honest:
+The contract stays at `services/gateway/src/main/resources/static/openapi.yaml`, is served at
+`/openapi.yaml`, and drives Swagger UI. Three tests keep it honest: `OpenApiSpecTest` (the document
+parses and documents exactly the expected v1 operations), `OpenApiContractIT` (registered endpoints
+match the contract and both are served), and the compose smoke test.
 
-- `OpenApiSpecTest` — the spec parses without errors and documents exactly the expected v1 operations.
-- `OpenApiContractIT` — every endpoint the application registers matches the spec (and vice versa).
-- `OpenApiValidationIT` — real requests and responses from the running app are validated against the
-  spec with the Atlassian OpenAPI request validator; response-shape or status drift fails the build.
+## Known limitations
 
-To change the API: edit `openapi.yaml`, update the controller, and run `./mvnw verify`. The generated
-KMP client is produced from this file.
-
-```bash
-./mvnw -Dtest=OpenApiSpecTest test
-./mvnw -Dit.test=OpenApiContractIT,OpenApiValidationIT verify
-```
-
-## Advice pipeline
-
-`AdviceEngine` (framework-free) composes, without inventing anything:
-
-1. **Drug–drug**: `InteractionSource` results. Sources are merged: the demo source (recorded
-   `interact_v2` responses) or the live HTTP client, plus the own `interaction_substances` cache.
-2. **Class mapping**: `rules/rls_class_mapping.yaml` maps RLS `class`/`subclass`/`direction` to a
-   danger level (`INFO`/`CAUTION`/`AVOID`/`FORBIDDEN`) and an explanation template.
-3. **Drug–allergy**: own rule (`rules/allergy_rules.yaml`), matching by substance name, ATC prefix
-   or cross-reactivity group.
-4. **Duplicate active substance**.
-
-An empty source response becomes `NO_INTERACTIONS_REPORTED` ("RLS returned no interactions"), an
-unresolved name becomes `INSUFFICIENT_DATA`. The status `safe` does not exist. Every check is stored
-in `advice_record` with the rules/catalog versions.
-
-## Layout
-
-```
-src/main/java/ru/sovmestim
-├── config        security, JWT, properties, rule loading
-├── common        errors, name normalization, current-user helper
-├── identity      users, OTP/refresh login
-├── patient       allergies, conditions, snapshot for the engine
-├── catalog       ATC/substances/medicines, demo/RLS import
-├── advice        engine, sources, class mapping, allergy rules, audit
-├── intake        current medications (course medicines)
-└── sync          profile push/pull with cursor
-```
-
-## Known limitations / next steps
-
-- `RlsHttpInteractionSource` is a thin, untested client: the open questions from architecture §9
-  (licensed method, auth, limits, `as_ids` length) must be closed with a real test key.
-- Drug–disease and drug–food sources are undefined and return a note / insufficient data.
-- Sync covers the profile and current medications, with idempotent push and server-side auto-check;
-  intake events, schedules and attachments are follow-ups.
-- Rules in `rules/*.yaml` are samples and must be signed by the expert pharmacologist before release.
+- `RlsHttpInteractionSource` is still a thin, untested client; the licensed RLS questions (auth,
+  limits, `as_ids` length) must be closed with a real key.
+- Drug–disease and drug–food sources return a note / insufficient data.
+- Intake events, schedules and attachments are follow-ups; intake exposes substance-level rules
+  but the REST contract does not create them yet.
+- Rules in `services/advice/src/main/resources/rules/*.yaml` are samples and must be signed by the
+  expert pharmacologist before release.
