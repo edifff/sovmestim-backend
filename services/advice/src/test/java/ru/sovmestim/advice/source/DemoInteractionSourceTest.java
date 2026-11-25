@@ -2,6 +2,7 @@ package ru.sovmestim.advice.source;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -46,7 +47,36 @@ class DemoInteractionSourceTest {
 
     @Test
     void exposesCatalogVersion() {
-        Assertions.assertThat(source.catalogVersion()).isEqualTo("demo-2026.01");
+        Assertions.assertThat(source.catalogVersion()).isEqualTo("demo-2026.11");
+    }
+
+    @Test
+    void loadsAllRecordedAndStubPairs() {
+        List<SubstanceRef> allSubstances = Stream.of(
+                        "варфарин", "ацетилсалициловая кислота", "ибупрофен", "эналаприл",
+                        "калий хлорид", "метформин", "йогексол", "симвастатин",
+                        "кларитромицин", "итраконазол", "флуконазол", "литий карбонат",
+                        "ципрофлоксацин", "теофиллин", "омепразол", "клопидогрел",
+                        "сертралин", "спиронолактон", "метронидазол", "амиодарон",
+                        "верапамил", "аторвастатин", "кетоконазол", "рифампицин",
+                        "преднизолон", "дигоксин", "фуросемид", "инсулин человеческий",
+                        "глибенкламид", "аллопуринол", "азатиоприн")
+                .map(DemoInteractionSourceTest::substance)
+                .toList();
+
+        Assertions.assertThat(source.check(allSubstances)).hasSize(27);
+    }
+
+    @Test
+    void findsNewStubPairs() {
+        List<SubstanceInteraction> digoxinInteractions =
+                source.check(List.of(substance("дигоксин"), substance("верапамил")));
+
+        Assertions.assertThat(digoxinInteractions).hasSize(1);
+        Assertions.assertThat(digoxinInteractions.getFirst().subclass()).isEqualTo("metabolism");
+        Assertions.assertThat(digoxinInteractions.getFirst().direction()).isEqualTo("increase_exposure");
+        Assertions.assertThat(source.check(List.of(substance("инсулин человеческий"), substance("глибенкламид"))))
+                .hasSize(1);
     }
 
     private static SubstanceRef substance(String name) {

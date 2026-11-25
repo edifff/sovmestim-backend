@@ -1,7 +1,7 @@
 {
-  "catalog_version": "demo-2026.01",
+  "catalog_version": "demo-2026.11",
   "source": "recorded interact_v2 responses (demo mode)",
-  "note": "Real RLS responses recorded during phase 0; used so the presentation runs with zero paid calls.",
+  "note": "Real RLS responses recorded during phase 0, plus 15 synthetic stub pairs added while the licensed key is unavailable.",
   "pairs": [
     {
       "as1_name": "варфарин", "as1_atc": "B01AA",
@@ -98,6 +98,126 @@
       "description": "Повышается риск кровотечения при совместном приёме.",
       "official_src_name": "Инструкция ЛП", "official_src_date": "2021-01-29", "official_src_note": "",
       "alternative_src_name": "RLS library", "alternative_src_date": "2020-03-03", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "эналаприл", "as1_atc": "C09A",
+      "as2_name": "ибупрофен", "as2_atc": "M01AE", "as2_phg_name": "НПВС",
+      "class": "pharm", "subclass": "synergism", "direction": "decrease_effect",
+      "description": "НПВС снижают гипотензивный эффект эналаприла и повышают риск повреждения почек.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-05-18", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-08-12", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "эналаприл", "as1_atc": "C09A",
+      "as2_name": "спиронолактон", "as2_atc": "C03DA", "as2_phg_name": "",
+      "class": "pharm", "subclass": "synergism", "direction": "hyperkalemia",
+      "description": "Оба препарата повышают уровень калия; риск гиперкалиемии.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-02-03", "official_src_note": "Контроль калия крови",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-04-17", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "спиронолактон", "as1_atc": "C03DA",
+      "as2_name": "калий хлорид", "as2_atc": "A12BA", "as2_phg_name": "",
+      "class": "pharm", "subclass": "synergism", "direction": "hyperkalemia",
+      "description": "Калийсберегающий диуретик и препарат калия: риск выраженной гиперкалиемии.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-07-14", "official_src_note": "",
+      "alternative_src_name": "", "alternative_src_date": null, "alternative_src_note": ""
+    },
+    {
+      "as1_name": "варфарин", "as1_atc": "B01AA",
+      "as2_name": "метронидазол", "as2_atc": "J01XD", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Метронидазол замедляет метаболизм варфарина; риск кровотечения.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-01-19", "official_src_note": "Контроль МНО",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2019-10-08", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "варфарин", "as1_atc": "B01AA",
+      "as2_name": "амиодарон", "as2_atc": "C01BD", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Амиодарон повышает концентрацию варфарина; требуется снижение дозы и контроль МНО.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-09-25", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-01-30", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "симвастатин", "as1_atc": "C10A",
+      "as2_name": "амиодарон", "as2_atc": "C01BD", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Амиодарон повышает концентрацию симвастатина; риск рабдомиолиза.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-06-11", "official_src_note": "Ограничить дозу симвастатина",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-02-21", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "симвастатин", "as1_atc": "C10A",
+      "as2_name": "верапамил", "as2_atc": "C08DA", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Верапамил повышает концентрацию симвастатина; риск миопатии и рабдомиолиза.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-12-04", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2019-11-16", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "кларитромицин", "as1_atc": "J01F",
+      "as2_name": "аторвастатин", "as2_atc": "C10AA", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Кларитромицин повышает концентрацию аторвастатина; риск рабдомиолиза.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-03-22", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-06-09", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "омепразол", "as1_atc": "A02BC",
+      "as2_name": "кетоконазол", "as2_atc": "J02AB", "as2_phg_name": "",
+      "class": "pharm", "subclass": "absorption", "direction": "decrease_effect",
+      "description": "Омепразол снижает кислотность желудка и ухудшает всасывание кетоконазола.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-05-27", "official_src_note": "Рассмотреть альтернативный противогрибковый препарат",
+      "alternative_src_name": "", "alternative_src_date": null, "alternative_src_note": ""
+    },
+    {
+      "as1_name": "омепразол", "as1_atc": "A02BC",
+      "as2_name": "рифампицин", "as2_atc": "J04AB", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "decrease_effect",
+      "description": "Рифампицин ускоряет метаболизм омепразола и снижает его эффективность.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-10-12", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2019-08-19", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "ибупрофен", "as1_atc": "M01AE", "as1_phg_name": "НПВС",
+      "as2_name": "преднизолон", "as2_atc": "H02AB", "as2_phg_name": "",
+      "class": "pharm", "subclass": "synergism", "direction": "increase_toxicity",
+      "description": "Сочетание повышает риск эрозий и кровотечений желудочно-кишечного тракта.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-01-08", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-03-14", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "дигоксин", "as1_atc": "C01AA",
+      "as2_name": "фуросемид", "as2_atc": "C03CA", "as2_phg_name": "",
+      "class": "pharm", "subclass": "synergism", "direction": "increase_toxicity",
+      "description": "Фуросемид вызывает гипокалиемию и усиливает токсичность дигоксина.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-11-30", "official_src_note": "Контроль калия и ЭКГ",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-02-05", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "дигоксин", "as1_atc": "C01AA",
+      "as2_name": "верапамил", "as2_atc": "C08DA", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Верапамил повышает концентрацию дигоксина; риск брадикардии и блокад.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-04-06", "official_src_note": "",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2019-12-17", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "инсулин человеческий", "as1_atc": "A10A",
+      "as2_name": "глибенкламид", "as2_atc": "A10BB", "as2_phg_name": "",
+      "class": "pharm", "subclass": "synergism", "direction": "increase_toxicity",
+      "description": "Суммарное гипогликемическое действие; риск тяжёлой гипогликемии.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2021-07-03", "official_src_note": "Контроль глюкозы крови",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2020-05-23", "alternative_src_note": ""
+    },
+    {
+      "as1_name": "аллопуринол", "as1_atc": "M04AA",
+      "as2_name": "азатиоприн", "as2_atc": "L04AX", "as2_phg_name": "",
+      "class": "pharm", "subclass": "metabolism", "direction": "increase_exposure",
+      "description": "Аллопуринол блокирует метаболизм азатиоприна; риск тяжёлой миелосупрессии.",
+      "official_src_name": "Инструкция ЛП", "official_src_date": "2020-04-09", "official_src_note": "Требуется снижение дозы азатиоприна",
+      "alternative_src_name": "RLS library", "alternative_src_date": "2019-09-26", "alternative_src_note": ""
     }
   ]
 }
