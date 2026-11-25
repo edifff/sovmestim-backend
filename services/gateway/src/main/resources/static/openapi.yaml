@@ -692,6 +692,7 @@ components:
       required: [id, medicineName]
       properties:
         id: { type: string, format: uuid }
+        medicineId: { type: string, format: uuid, nullable: true }
         medicineName: { type: string }
         brand: { type: string, nullable: true }
         dosage: { type: string, nullable: true }

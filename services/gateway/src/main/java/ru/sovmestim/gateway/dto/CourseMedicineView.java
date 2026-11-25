@@ -8,6 +8,7 @@ import java.util.UUID;
  * Read model of a medication course returned to the client.
  *
  * @param id course id
+ * @param medicineId catalog medicine id, or {@code null} for an unresolved draft
  * @param medicineName catalog medicine name
  * @param brand trade mark brand, or {@code null}
  * @param dosage dosage text
@@ -18,6 +19,7 @@ import java.util.UUID;
  */
 public record CourseMedicineView(
         UUID id,
+        UUID medicineId,
         String medicineName,
         String brand,
         String dosage,

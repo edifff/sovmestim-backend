@@ -19,6 +19,7 @@ final class IntakeProtoMapper {
     static Medication toProto(CourseMedicineView view) {
         Medication.Builder medication = Medication.newBuilder()
                 .setId(view.id().toString())
+                .setMedicineId(ProtoIds.toText(view.medicineId()))
                 .setMedicineName(view.medicineName())
                 .setBrand(text(view.brand()))
                 .setDosage(text(view.dosage()))
