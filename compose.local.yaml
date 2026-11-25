@@ -1,0 +1,24 @@
+# Local-only overrides for this machine:
+#   - gateway is published on 8089 because 8080 is taken by another project;
+#   - builds use Dockerfile.local, which drops the `# syntax=docker/dockerfile:1`
+#     frontend pull that fails over IPv6 here.
+# Use with:
+#   docker compose -f compose.yaml -f compose.local.yaml up -d --build
+x-local-build: &local-build
+  dockerfile: Dockerfile.local
+
+services:
+  identity:
+    build: *local-build
+  patient:
+    build: *local-build
+  catalog:
+    build: *local-build
+  intake:
+    build: *local-build
+  advice:
+    build: *local-build
+  gateway:
+    build: *local-build
+    ports: !override
+      - "8089:8080"
