@@ -143,6 +143,7 @@ final class GatewayProtoMapper {
     static CourseMedicineView courseView(ru.sovmestim.proto.intake.v1.Medication medication) {
         return new CourseMedicineView(
                 UUID.fromString(medication.getId()),
+                ProtoIds.toUuid(medication.getMedicineId()),
                 medication.getMedicineName(),
                 textOrNull(medication.getBrand()),
                 textOrNull(medication.getDosage()),

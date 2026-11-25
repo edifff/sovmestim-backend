@@ -206,6 +206,7 @@ public class MedicationService {
         String status = entity.getStatus() != null ? entity.getStatus().getName() : null;
         return new CourseMedicineView(
                 entity.getId(),
+                entity.getMedicineId(),
                 entity.getMedicineName(),
                 entity.getBrand(),
                 entity.getDosage(),
