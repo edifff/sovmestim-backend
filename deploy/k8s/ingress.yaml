@@ -1,0 +1,26 @@
+# Optional public entry point. Requires an ingress controller (for example ingress-nginx) and a
+# DNS record for api.sovmestim.local pointing at it. Without an ingress controller use:
+#   kubectl port-forward -n sovmestim svc/gateway 8080:8080
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gateway
+  labels:
+    app: gateway
+    app.kubernetes.io/part-of: sovmestim
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.sovmestim.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  name: http

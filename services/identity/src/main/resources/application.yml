@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: sovmestim-identity
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sovmestim_identity}
+    username: ${SPRING_DATASOURCE_USERNAME:sovmestim}
+    password: ${SPRING_DATASOURCE_PASSWORD:sovmestim}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+server:
+  port: ${SERVER_PORT:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      # Kubernetes probes: liveness ignores the database, readiness requires it.
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  health:
+    # Mail is optional (channel=log is the dev default); an unconfigured SMTP host must not make
+    # the service unhealthy.
+    mail:
+      enabled: false
+
+sovmestim:
+  grpc:
+    port: ${SOVMESTIM_GRPC_PORT:9091}
+  jwt:
+    secret: ${SOVMESTIM_JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+    issuer: ${SOVMESTIM_JWT_ISSUER:sovmestim}
+    access-ttl: PT15M
+    refresh-ttl: P30D
+  otp:
+    channel: ${SOVMESTIM_OTP_CHANNEL:log}
+    from: ${SOVMESTIM_OTP_FROM:}
+    ttl: PT10M
+    debug-return-code: ${SOVMESTIM_OTP_DEBUG:true}

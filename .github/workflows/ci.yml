@@ -1,0 +1,24 @@
+name: CI sovmestim-backend
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Validate Kubernetes manifests
+        run: |
+          kubectl kustomize deploy/k8s > rendered-k8s.yaml
+          docker run --rm -v "$PWD/rendered-k8s.yaml:/rendered.yaml" \
+            ghcr.io/yannh/kubeconform:latest -strict -summary /rendered.yaml
+      # Unit tests plus Testcontainers integration tests for every service.
+      - run: ./mvnw -B verify

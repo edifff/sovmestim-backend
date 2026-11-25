@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package sovmestim.identity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "ru.sovmestim.proto.identity.v1";
+option java_multiple_files = true;
+option java_outer_classname = "IdentityProto";
+
+// Passwordless identity: one-time codes and token issuance. Access tokens are validated by the
+// gateway, so no other service needs to call this contract on the request path.
+service IdentityService {
+  // Starts a login by sending a one-time code to the e-mail.
+  rpc RequestCode(RequestCodeRequest) returns (RequestCodeResponse);
+
+  // Completes a login by verifying the submitted one-time code.
+  rpc VerifyCode(VerifyCodeRequest) returns (TokenResponse);
+
+  // Rotates a refresh token into a new token pair.
+  rpc RefreshToken(RefreshTokenRequest) returns (TokenResponse);
+
+  // Returns the public profile of a user; used by the gateway's GET /v1/profile.
+  rpc GetUser(GetUserRequest) returns (User);
+}
+
+message RequestCodeRequest {
+  string email = 1;
+}
+
+message RequestCodeResponse {
+  string email = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  string dev_code = 3;
+}
+
+message VerifyCodeRequest {
+  string email = 1;
+  string code = 2;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message TokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  string token_type = 3;
+  int64 expires_in = 4;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string surname = 3;
+  string name = 4;
+  string birth_date = 5;
+}
